@@ -1,0 +1,10 @@
+    <p>
+		&nbsp;<br/>
+		&nbsp;<br/>
+		<span style="color:white;font-size:10pt;">Elkjøp Stormarked Ålesund<br/>Kundeservice: 815 32 000 &nbsp;&nbsp; Åpningstider: Man - fre: 09:00 - 21:00 (lørdag 10:00 - 15:00)</span>
+	</p>
+	
+	</div>
+
+</body>
+</html>

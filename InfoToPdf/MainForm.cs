@@ -133,7 +133,7 @@ namespace InfoToPdf
         private void FillSettings()
         {
             // General settngs
-            if (appConfig.pdfStyle >= 0 && appConfig.pdfStyle <= 1)
+            if (appConfig.pdfStyle != -1)
                 comboBoxSettingsPdfStyle.SelectedIndex = appConfig.pdfStyle;
             else
                 comboBoxSettingsPdfStyle.SelectedIndex = 0;

@@ -16,7 +16,7 @@ namespace InfoToPdf
             InitializeComponent();
         }
 
-        public void Init(string txt, string title = "Info", MessageBoxButtons msgButton = MessageBoxButtons.OK, MessageBoxIcon msgIcon = MessageBoxIcon.Error, MessageBoxDefaultButton msgDefaultButton = MessageBoxDefaultButton.Button1)
+        public void Init(string txt, string title = "Info", MessageBoxButtons msgButton = MessageBoxButtons.OK, MessageBoxIcon msgIcon = MessageBoxIcon.Error, MessageBoxDefaultButton msgDefaultButton = MessageBoxDefaultButton.Button1, bool extraHeight = false)
         {
             if (msgButton == MessageBoxButtons.OKCancel)
             {
@@ -57,6 +57,11 @@ namespace InfoToPdf
 
             this.labelTxt.Text = txt;
             this.Text = title;
+
+            if (extraHeight)
+                this.Height = 250;
+            else
+                this.Height = 180;
         }
 
         private void Notification_Load(object sender, EventArgs e)

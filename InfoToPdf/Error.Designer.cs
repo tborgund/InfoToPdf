@@ -39,6 +39,7 @@
             this.labelErrorTitle.AutoSize = true;
             this.labelErrorTitle.Font = new System.Drawing.Font("Microsoft Sans Serif", 11.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.labelErrorTitle.Location = new System.Drawing.Point(12, 9);
+            this.labelErrorTitle.MaximumSize = new System.Drawing.Size(500, 0);
             this.labelErrorTitle.Name = "labelErrorTitle";
             this.labelErrorTitle.Size = new System.Drawing.Size(101, 18);
             this.labelErrorTitle.TabIndex = 0;

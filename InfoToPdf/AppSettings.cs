@@ -18,8 +18,6 @@ namespace InfoToPdf
         public int WindowSizeY { get; set; }
         public bool WindowMax { get; set; }
 
-        public decimal pdfZoom { get; set; }
-        public bool pdfLandscape { get; set; }
         public int pdfStyle { get; set; }
 
         public string shopName { get; set; }
@@ -30,6 +28,10 @@ namespace InfoToPdf
         public string emailFromAddress { get; set; }
         public bool pdfAddBarcode { get; set; }
         public bool warnMissingOrderno { get; set; }
+        public bool warnDataLoss { get; set; }
+
+        public int statsCountStarted { get; set; }
+        public int statsCountDocuments { get; set; }
         
         public AppSettings()
         {
@@ -38,16 +40,17 @@ namespace InfoToPdf
             if (WindowSizeY < 588) { WindowSizeY = 588; }
             if (WindowLocationX <= 0) { WindowLocationX = 50; }
             if (WindowLocationY <= 0) { WindowLocationY = 50; }
-            this.pdfZoom = 1;
-            this.pdfLandscape = false;
             this.shopName = "Elkjøp";
             this.emailFromAddress = "noreply@elkjop.no";
             this.emailSmtpHost = "smtp.elkjop.no";
             this.emailSmtpPort = 25;
             this.emailSmtpUseSsl = false;
-            this.warnMissingOrderno = true;
-            this.pdfStyle = 2;
+            this.pdfStyle = 1;
             this.pdfAddBarcode = true;
+            this.warnMissingOrderno = true;
+            this.warnDataLoss = true;
+            this.statsCountStarted = 0;
+            this.statsCountDocuments = 0;
         }
 
     }

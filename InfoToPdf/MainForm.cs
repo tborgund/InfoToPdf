@@ -21,7 +21,7 @@ namespace InfoToPdf
 {
     public partial class MainForm : Form
     {
-        public static string version = "0.4";
+        public static string version = "0.2";
         public static string settingsPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\InfoPdf";
         public static string appTemp = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\InfoPdf\Temp";
         public static string settingsFile = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\InfoPdf\Settings.xml";
@@ -41,12 +41,34 @@ namespace InfoToPdf
             LoadSettings();
             LoadPage();
             webBrowser.Document.MouseDown += new HtmlElementEventHandler(CloseSettings);
+            appConfig.statsCountStarted++;
         }
 
         private void LoadPage()
         {
-            File.WriteAllText(fileHtml, Resources.kontoinfo);
+            File.WriteAllText(fileHtml, Resources.kontoinfo.Replace("[tips]", RandomTips()));
             Go(fileHtml);
+        }
+
+        private string RandomTips()
+        {
+            try
+            {
+                string[] tips = new string[] {
+                "Be kunden om å velge et passord som er minst 8 tegn langt med 1 stor bokstav og minst 1 tall. Max 16 tegn."
+                , "E-post adressen kan også brukes til å logge inn på Elkjøp Cloud."
+                , "Skjema kan fylles ut for hånd også. Bare merk av boksene du trenger og skriv ut."
+                , "Dokumentet har to forskjellige utseender som kan endres under Innstillinger."
+                , "Hvis informasjonen tar mer plass enn èn side, huk av noen av kontoene og skriv de ut seperat etterpå."
+                , "Hvis ordrenummer legges til, lages det en strekkode som kan leses inn i Elguide."
+                , "Hele navnet på butikken kan fylles ut under innstilligene og vil bli satt inn i bunnteksten."
+                };
+
+                Random rnd = new Random();
+                return "<p>" + tips[rnd.Next(0, tips.Length)] + "</p>";
+            }
+            catch { }
+            return "";
         }
 
         private void Go(string url)
@@ -91,6 +113,7 @@ namespace InfoToPdf
                     string result = (string)e.Result;
                     buttonConvert.Text = "Åpner PDF..";
                     System.Diagnostics.Process.Start(result);
+                    appConfig.statsCountDocuments++;
                 }
                 catch (FileNotFoundException ex)
                 {
@@ -133,7 +156,7 @@ namespace InfoToPdf
         private void FillSettings()
         {
             // General settngs
-            if (appConfig.pdfStyle != -1)
+            if (appConfig.pdfStyle > -1 && appConfig.pdfStyle <= (comboBoxSettingsPdfStyle.Items.Count - 1))
                 comboBoxSettingsPdfStyle.SelectedIndex = appConfig.pdfStyle;
             else
                 comboBoxSettingsPdfStyle.SelectedIndex = 0;
@@ -143,13 +166,14 @@ namespace InfoToPdf
             textBoxSettingsSmtpPort.Text = appConfig.emailSmtpPort.ToString();
             textBoxSettingsFromAddress.Text = appConfig.emailFromAddress;
             // PDF settings
-            radioButtonSettingsOrientH.Checked = appConfig.pdfLandscape;
-            radioButtonSettingsOrientV.Checked = !appConfig.pdfLandscape;
-            numericSettingsPdfZoom.Value = appConfig.pdfZoom;
             checkBoxSettingsAddBarcode.Checked = appConfig.pdfAddBarcode;
             
             // Other settings
             checkBoxSettingsWarnMissingOrderno.Checked = appConfig.warnMissingOrderno;
+            checkBoxSettingsWarnExit.Checked = appConfig.warnDataLoss;
+
+            // Stats
+            labelStatsCountDocuments.Text = appConfig.statsCountDocuments.ToString();
         }
 
         /// <summary>
@@ -184,7 +208,11 @@ namespace InfoToPdf
                 {
                     File.WriteAllBytes(filePDFwkhtmltopdf, Resources.wkhtmltopdf);
                 }
-
+                else if (new System.IO.FileInfo(filePDFwkhtmltopdf).Length != 23063552)
+                {
+                    Console.WriteLine("filePDFwkhtmltopdf har ikke riktig lengde! 23063552");
+                    File.WriteAllBytes(filePDFwkhtmltopdf, Resources.wkhtmltopdf);
+                }
             }
             catch (Exception ex)
             {
@@ -196,7 +224,7 @@ namespace InfoToPdf
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
 
-            if (BrowserContainsData())
+            if (BrowserContainsData() && appConfig.warnDataLoss)
                 if (Alert("Dokument inneholder data!\nEr du sikker på at du vil avslutte?", "Avslutt", MessageBoxButtons.YesNo) != System.Windows.Forms.DialogResult.Yes)
                 {
                     e.Cancel = true;
@@ -249,8 +277,7 @@ namespace InfoToPdf
 
         private void buttonUpdate_Click(object sender, EventArgs e)
         {
-
-            if (BrowserContainsData())
+            if (BrowserContainsData() && appConfig.warnDataLoss)
                 if (Alert("Er du sikker på at du vil slette gjeldene data?", "Nytt dokument", MessageBoxButtons.YesNo) != System.Windows.Forms.DialogResult.Yes)
                     return;
 
@@ -259,9 +286,7 @@ namespace InfoToPdf
 
         private void buttonExtract_Click(object sender, EventArgs e)
         {
-
             GenerateHtml();
-
         }
 
         private void Form1_Shown(object sender, EventArgs e)
@@ -277,17 +302,17 @@ namespace InfoToPdf
             doc.Append("</div>");
             doc.Append("<div id=\"right\" class=\"field\">");
             if (bold)
-                doc.Append("<b>"  + field + "</b>");
+                doc.Append("<b>" + field + "</b>");
             else
                 doc.Append(field);
             doc.Append("</div>");
             doc.Append("</div>");
         }
 
-        public DialogResult Alert(string txt, string title = "Info", MessageBoxButtons msgButton = MessageBoxButtons.OK, MessageBoxIcon msgIcon = MessageBoxIcon.Error, MessageBoxDefaultButton msgDefaultButton = MessageBoxDefaultButton.Button1)
+        public DialogResult Alert(string txt, string title = "Info", MessageBoxButtons msgButton = MessageBoxButtons.OK, MessageBoxIcon msgIcon = MessageBoxIcon.Error, MessageBoxDefaultButton msgDefaultButton = MessageBoxDefaultButton.Button1, bool extraHeight = false)
         {
             Notification n = new Notification();
-            n.Init(txt, title, msgButton, msgIcon, msgDefaultButton);
+            n.Init(txt, title, msgButton, msgIcon, msgDefaultButton, extraHeight);
             return n.ShowDialog(this);
         }
 
@@ -305,276 +330,296 @@ namespace InfoToPdf
             return true;
         }
 
-
         private bool GenerateHtml()
         {
-            wbe = new WebBrowserExtract();
-            wbe.Extract(webBrowser);
-
-            if (!wbe.jotta && !wbe.mcafee && !wbe.fsecure && !wbe.microsoft && !wbe.office && !wbe.gmail && !wbe.apple &&
-                !wbe.email && !wbe.dropbox && !wbe.samsung && !wbe.pin && !wbe.comment)
+            try
             {
-                Alert("Ingen bokser valgt!", "Mangler valg - Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return false;
-            }
+                wbe = new WebBrowserExtract();
+                wbe.Extract(webBrowser);
 
-            if (wbe.orderno.Length == 0 && appConfig.warnMissingOrderno)
-            {
-                if (Alert("Ordrenummer er ikke utfylt. Fortsette?", "Mangler valg - Info", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1) == System.Windows.Forms.DialogResult.No)
-                    return false;
-            }
-
-            StringBuilder doc = new StringBuilder();
-            int height = 0;
-
-            if (appConfig.pdfStyle <= 0)
-                doc.Append(Resources.htmlStart);
-            else
-                doc.Append(Resources.htmlStartPlain);
-
-            doc.Append("<div id=\"container\">");
-            if (wbe.orderno.Length > 0)
-            {
-                if (wbe.orderno.Length == 7 && appConfig.pdfAddBarcode)
+                if (!wbe.jotta && !wbe.mcafee && !wbe.fsecure && !wbe.microsoft && !wbe.office && !wbe.gmail && !wbe.apple &&
+                    !wbe.email && !wbe.dropbox && !wbe.samsung && !wbe.tomtom && !wbe.pin && !wbe.comment)
                 {
-                    string order = "0" + wbe.orderno;
-                    using (Barcode barcode = new Barcode(order))
+                    Alert("Ingen bokser valgt!", "Mangler valg - Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return false;
+                }
+
+                if (wbe.orderno.Length == 0 && appConfig.warnMissingOrderno)
+                {
+                    if (Alert("Ordrenummer er ikke utfylt. Fortsette?", "Mangler valg - Info", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1) == System.Windows.Forms.DialogResult.No)
+                        return false;
+                }
+
+                StringBuilder doc = new StringBuilder();
+
+                if (appConfig.pdfStyle <= 0)
+                    doc.AppendLine(Resources.htmlStart);
+                else
+                    doc.AppendLine(Resources.htmlStartPlain);
+
+                doc.AppendLine("<div id=\"container\">");
+                if (wbe.orderno.Length > 0)
+                {
+                    if (wbe.orderno.Length >= 7 && appConfig.pdfAddBarcode)
                     {
-                        barcode.EncodedType = TYPE.EAN8;
-                        barcode.Height = 75;
-                        barcode.Width = 300;
-                        barcode.Encode();
-                        barcode.SaveImage(MainForm.appTemp + @"\barcodeKgsa.png", SaveTypes.PNG);
+                        try {
+                            File.Delete(MainForm.appTemp + @"\barcode.png");
+                        }
+                        catch (IOException) { }
+                        using (Barcode barcode = new Barcode(wbe.orderno))
+                        {
+                            barcode.EncodedType = TYPE.CODE128;
+                            barcode.Height = 75;
+                            barcode.Width = 300;
+                            barcode.Encode();
+                            barcode.SaveImage(MainForm.appTemp + @"\barcode.png", SaveTypes.PNG);
+                        }
+                        if (File.Exists(MainForm.appTemp + @"\barcode.png"))
+                            doc.AppendLine("<span style=\"float:right;margin-top: 0px;padding:10px 0px;\"><img src='barcode.png' style='width:190px;height:20px;vertical-align:middle;'> Ordre-id: " + wbe.orderno + "</span>");
+                        else
+                            doc.AppendLine("<span style=\"float:right;margin-top: 0px;padding:10px 0px;\"> Ordre-id: " + wbe.orderno + "</span>");
                     }
-                    if (File.Exists(MainForm.appTemp + @"\barcodeKgsa.png"))
-                        doc.Append("<span style=\"float:right;margin-top: 0px;padding:10px 0px;\"><img src='barcodeKgsa.png' style='width:190px;height:20px;vertical-align:middle;'> Ordre-id: " + wbe.orderno + "</span>");
                     else
-                        doc.Append("<span style=\"float:right;margin-top: 0px;padding:10px 0px;\"> Ordre-id: " + wbe.orderno + "</span>");
+                        doc.AppendLine("<span style=\"float:right;margin-top: 0px;padding:10px 0px;\"> Ordre-id: " + wbe.orderno + "</span>");
                 }
-                else
-                    doc.Append("<span style=\"float:right;margin-top: 0px;padding:10px 0px;\"> Ordre-id: " + wbe.orderno + "</span>");
-            }
-            doc.Append("<h1>Konto informasjon</h1>");
-            doc.Append("<p>");
-            doc.Append("Kjære kunde!<br />");
-            doc.Append("Takk for at du har benyttet deg av våre teknikere til å få satt opp ditt produkt. Her har du en oversikt over brukernavn og passord knyttet til dine kontoer.<br />");
-            doc.Append("<b>Ta godt vare på denne informasjonen!</b>");
-            doc.Append("</p>");
+                doc.AppendLine("<h1>Konto informasjon</h1>");
+                doc.AppendLine("<p>");
+                doc.AppendLine("Kjære kunde!<br />");
+                doc.AppendLine("Takk for at du har benyttet deg av våre teknikere til å få satt opp ditt produkt. Her har du en oversikt over brukernavn og passord knyttet til dine kontoer.<br />");
+                doc.AppendLine("<b>Ta godt vare på denne informasjonen!</b>");
+                doc.AppendLine("</p>");
 
-
-            if (wbe.jotta)
-            {
-                height += 176 + 25;
-                doc.Append("<div class=\"jotta service\">");
-                doc.Append("<p><h2>Elkjøp Cloud konto</h2>");
-                if (wbe.jottaUnlimited)
-                    doc.Append("Elkjøp Cloud med ubegrenset lagring er installert og klargjort.</p>");
-                else
-                    doc.Append("Elkjøp Cloud med 15 GB gratis lagring er installert og klargjort.</p>");
-
-                AddField(doc, "Brukernavn:", wbe.jottaUser, true);
-                AddField(doc, "Passord:", wbe.jottaPass, true);
-                
-                doc.Append("<p>For administrasjon og endring av passord, gå til<br />");
-    			doc.Append("<a href=\"https://sikkerlagring.elkjop.no/login\">sikkerlagring.elkjop.no/login</a></p>");
-
-                doc.Append("</div>"); // end
-            }
-
-            if (wbe.mcafee)
-            {
-                height += 200 + 25;
-                doc.Append("<div class=\"mcafee service\">");
-                doc.Append("<p><h2>McAfee konto</h2>");
-                doc.Append("Din sikkerhetsprogramvare McAfee Live Safe er installert og klargjort.<br /></p>");
-
-                AddField(doc, "Brukernavn / E-post:", wbe.mcafeeUser, true);
-                AddField(doc, "Passord:", wbe.mcafeePass, true);
-                if (wbe.mcafeeLicense.Length > 0)
-                    AddField(doc, "Lisens:", wbe.mcafeeLicense, true);
-
-                doc.Append("<p>For administrasjon og endring av passord, gå til<br />");
-                doc.Append("<a href=\"http://home.mcafee.com/Default.aspx?culture=NB-NO\" target=\"_blank\">home.mcafee.com</a></p>");
-
-                doc.Append("</div>"); // end
-            }
-
-            if (wbe.fsecure)
-            {
-                height += 88 + 25;
-                doc.Append("<div class=\"fsecure service\">");
-                doc.Append("<p><h2>F-Secure Internet Security</h2>");
-                doc.Append("Din sikkerhetsprogramvare F-Secure Internet Security er installert og klargjort.<br /></p>");
-
-                AddField(doc, "Lisens:", wbe.fsecureKey, true);
-
-                doc.Append("</div>"); // end
-            }
-
-            if (wbe.microsoft)
-            {
-                height += 160 + 25;
-                doc.Append("<div class=\"microsoft service\">");
-                doc.Append("<p><h2>Microsoft konto</h2>");
-                doc.Append("Vi har opprettet en Microsoft konto i forbindelse med klargjøringen<br/> av ditt produkt.<br /></p>");
-
-                AddField(doc, "E-post adresse:", wbe.microsoftUser, true);
-                AddField(doc, "Passord:", wbe.microsoftPass, true);
-                AddField(doc, "Fødselsdato:", wbe.microsoftDay + " " + wbe.microsoftMonth + " " + wbe.microsoftYear, true);
-
-                doc.Append("</div>"); // end
-            }
-
-            if (wbe.office)
-            {
-                height += 88 + 25;
-                doc.Append("<div class=\"office service\">");
-                doc.Append("<p><h2>Office Lisens</h2>");
-
-                AddField(doc, "Lisens:", wbe.officeKey, true);
-
-                doc.Append("</div>"); // end
-            }
-
-            if (wbe.gmail)
-            {
-                height += 184 + 25;
-                doc.Append("<div class=\"gmail service\">");
-                doc.Append("<p><h2>Google Konto</h2>");
-                doc.Append("Vi har opprettet en Google konto i forbindelse med klargjøringen av ditt produkt.<br /></p>");
-
-                AddField(doc, "E-post adresse:", wbe.gmailUser, true);
-                AddField(doc, "Passord:", wbe.gmailPass, true);
-                if (wbe.gmailAnswer.Length > 0)
+                if (wbe.jotta)
                 {
-                    AddField(doc, "Sikkerhetsspørsmål:", wbe.gmailQuestion, true);
-                    AddField(doc, "Hemmelig svar:", wbe.gmailAnswer, true);
+                    doc.AppendLine("<div class=\"jotta service\">");
+                    doc.AppendLine("<p><h2>Elkjøp Cloud konto</h2>");
+                    if (wbe.jottaUnlimited)
+                        doc.AppendLine("Elkjøp Cloud med ubegrenset lagring er installert og klargjort.</p>");
+                    else
+                        doc.AppendLine("Elkjøp Cloud med 15 GB gratis lagring er installert og klargjort.</p>");
+
+                    AddField(doc, "Brukernavn:", wbe.jottaUser, true);
+                    AddField(doc, "Passord:", wbe.jottaPass, true);
+
+                    doc.AppendLine("<p>For administrasjon og endring av passord, gå til<br />");
+                    doc.AppendLine("<a href=\"https://sikkerlagring.elkjop.no/login\">sikkerlagring.elkjop.no/login</a></p>");
+
+                    doc.AppendLine("</div>"); // end
                 }
-                if (wbe.gmailDay != "Dag")
-                    AddField(doc, "Fødselsdato:", wbe.gmailDay + " " + wbe.gmailMonth + " " + wbe.gmailYear, true);
 
-                doc.Append("</div>"); // end
+                if (wbe.mcafee)
+                {
+                    doc.AppendLine("<div class=\"mcafee service\">");
+                    doc.AppendLine("<p><h2>McAfee konto</h2>");
+                    doc.AppendLine("Din sikkerhetsprogramvare fra McAfee er installert og klargjort.<br /></p>");
+
+                    AddField(doc, "Brukernavn / E-post:", wbe.mcafeeUser, true);
+                    AddField(doc, "Passord:", wbe.mcafeePass, true);
+                    if (wbe.mcafeeLicense.Length > 0)
+                        AddField(doc, "Lisens:", wbe.mcafeeLicense, true);
+
+                    doc.AppendLine("<p>For administrasjon og endring av passord, gå til<br />");
+                    doc.AppendLine("<a href=\"http://home.mcafee.com/Default.aspx?culture=NB-NO\" target=\"_blank\">home.mcafee.com</a></p>");
+
+                    doc.AppendLine("</div>"); // end
+                }
+
+                if (wbe.microsoft)
+                {
+                    doc.AppendLine("<div class=\"microsoft service\">");
+                    doc.AppendLine("<p><h2>Microsoft konto</h2>");
+                    doc.AppendLine("Vi har opprettet en Microsoft konto i forbindelse med klargjøringen<br/> av ditt produkt.<br /></p>");
+
+                    AddField(doc, "E-post adresse:", wbe.microsoftUser, true);
+                    AddField(doc, "Passord:", wbe.microsoftPass, true);
+                    if (!wbe.microsoftDay.Equals("Dag") && wbe.microsoftUser.Length != 0)
+                        AddField(doc, "Fødselsdato:", wbe.microsoftDay + " " + wbe.microsoftMonth + " " + wbe.microsoftYear, true);
+
+                    doc.AppendLine("<p>For administrasjon og endring av passord, gå til<br />");
+                    doc.AppendLine("<a href=\"https://login.live.com\" target=\"_blank\">login.live.com</a></p>");
+
+                    doc.AppendLine("</div>"); // end
+                }
+
+                if (wbe.office)
+                {
+                    doc.AppendLine("<div class=\"office service\">");
+                    doc.AppendLine("<p><h2>Office Lisens</h2>");
+
+                    AddField(doc, "Lisens:", wbe.officeKey, true);
+
+                    doc.AppendLine("</div>"); // end
+                }
+
+                if (wbe.gmail)
+                {
+                    doc.AppendLine("<div class=\"gmail service\">");
+                    doc.AppendLine("<p><h2>Google Konto</h2>");
+                    doc.AppendLine("Vi har opprettet en Google konto i forbindelse med klargjøringen av ditt produkt.<br /></p>");
+
+                    AddField(doc, "E-post adresse:", wbe.gmailUser, true);
+                    AddField(doc, "Passord:", wbe.gmailPass, true);
+                    if (wbe.gmailAnswer.Length > 0)
+                    {
+                        AddField(doc, "Sikkerhetsspørsmål:", wbe.gmailQuestion, true);
+                        AddField(doc, "Hemmelig svar:", wbe.gmailAnswer, true);
+                    }
+                    if (!wbe.gmailDay.Equals("Dag") && wbe.gmailUser.Length != 0)
+                        AddField(doc, "Fødselsdato:", wbe.gmailDay + " " + wbe.gmailMonth + " " + wbe.gmailYear, true);
+
+                    doc.AppendLine("<p>For administrasjon og endring av passord, gå til<br />");
+                    doc.AppendLine("<a href=\"https://accounts.google.com\" target=\"_blank\">accounts.google.com</a></p>");
+
+                    doc.AppendLine("</div>"); // end
+                }
+
+                if (wbe.apple)
+                {
+                    doc.AppendLine("<div class=\"apple service\">");
+                    doc.AppendLine("<p><h2>Apple-ID</h2>");
+                    doc.AppendLine("Vi har opprettet en Apple-ID i forbindelse med klargjøringen av ditt produkt.<br /></p>");
+
+                    AddField(doc, "Brukernavn / E-post adresse:", wbe.appleUser, true);
+                    AddField(doc, "Passord:", wbe.applePass, true);
+
+                    if (!(wbe.appleAnswerOne.Equals("") && wbe.appleAnswerTwo.Equals("") && wbe.appleAnswerThree.Equals("")) && wbe.appleUser.Length != 0)
+                    {
+                        doc.AppendLine("<div id=\"table\">");
+                        doc.AppendLine("<div id=\"left\">");
+                        doc.AppendLine("Sikkerhetsspørsmål:");
+                        doc.AppendLine("</div>");
+                        doc.AppendLine("<div id=\"right\"  style=\"font-size:12px;line-height: 135%;\">");
+                        doc.AppendLine("Spørsmål 1: " + wbe.appleQuestionOne + "<br />");
+                        doc.AppendLine("Svar: <b>" + wbe.appleAnswerOne + "</b><br />");
+                        doc.AppendLine("Spørsmål 2: " + wbe.appleQuestionTwo + "<br />");
+                        doc.AppendLine("Svar: <b>" + wbe.appleAnswerTwo + "</b><br />");
+                        doc.AppendLine("Spørsmål 3: " + wbe.appleQuestionThree + "<br />");
+                        doc.AppendLine("Svar: <b>" + wbe.appleAnswerThree + "</b>");
+                        doc.AppendLine("</div>");
+                        doc.AppendLine("</div>");
+                    }
+                    if (!wbe.appleDay.Equals("Dag") && wbe.appleUser.Length != 0)
+                        AddField(doc, "Fødselsdato:", wbe.appleDay + " " + wbe.appleMonth + " " + wbe.appleYear, true);
+
+                    doc.AppendLine("<p>For administrasjon og endring av passord, gå til<br />");
+                    doc.AppendLine("<a href=\"https://appleid.apple.com\" target=\"_blank\">appleid.apple.com</a></p>");
+
+                    doc.AppendLine("</div>"); // end
+                }
+
+                if (wbe.email)
+                {
+                    doc.AppendLine("<div class=\"email service\">");
+                    doc.AppendLine("<p><h2>E-post konto</h2>");
+                    doc.AppendLine("E-post er ferdig oppsatt på ditt produkt.<br /></p>");
+
+                    AddField(doc, "Brukernavn / E-post:", wbe.emailUser, true);
+                    AddField(doc, "Passord:", wbe.emailPass, true);
+
+                    doc.AppendLine("</div>"); // end
+                }
+
+                if (wbe.dropbox)
+                {
+                    doc.AppendLine("<div class=\"dropbox service\">");
+                    doc.AppendLine("<p><h2>Dropbox Konto</h2>");
+                    doc.AppendLine("Din Dropbox er satt opp og aktivert på ditt produkt.<br /></p>");
+
+                    AddField(doc, "E-post adresse:", wbe.dropboxUser, true);
+                    AddField(doc, "Passord:", wbe.dropboxPass, true);
+                    if (!wbe.dropboxDay.Equals("Dag") && wbe.dropboxUser.Length != 0)
+                        AddField(doc, "Fødselsdato:", wbe.dropboxDay + " " + wbe.dropboxMonth + " " + wbe.dropboxYear, true);
+
+                    doc.AppendLine("<p>For administrasjon og endring av passord, gå til<br />");
+                    doc.AppendLine("<a href=\"https://www.dropbox.com\" target=\"_blank\">dropbox.com/</a></p>");
+
+                    doc.AppendLine("</div>"); // end
+                }
+
+                if (wbe.samsung)
+                {
+                    doc.AppendLine("<div class=\"samsung service\">");
+                    doc.AppendLine("<p><h2>Samsung konto</h2>");
+                    doc.AppendLine("Vi har opprettet en Samsung konto i forbindelse med klargjøringen av ditt produkt.</p>");
+
+                    AddField(doc, "Brukernavn / E-post:", wbe.samsungUser, true);
+                    AddField(doc, "Passord:", wbe.samsungPass, true);
+                    if (!wbe.samsungDay.Equals("Dag") && wbe.samsungUser.Length != 0)
+                        AddField(doc, "Fødselsdato:", wbe.samsungDay + " " + wbe.samsungMonth + " " + wbe.samsungYear, true);
+
+                    doc.AppendLine("<p>For administrasjon og endring av passord, gå til<br />");
+                    doc.AppendLine("<a href=\"https://account.samsung.com/account/check.do\">account.samsung.com/account/check.do</a></p>");
+
+                    doc.AppendLine("</div>"); // end
+                }
+
+                if (wbe.tomtom)
+                {
+                    doc.AppendLine("<div class=\"tomtom service\">");
+                    doc.AppendLine("<p><h2>TomTom konto</h2>");
+                    doc.AppendLine("Vi har opprettet en TomTom konto i forbindelse med klargjøringen av ditt produkt.</p>");
+
+                    AddField(doc, "Brukernavn / E-post:", wbe.tomtomUser, true);
+                    AddField(doc, "Passord:", wbe.tomtomPass, true);
+
+                    doc.AppendLine("<p>For administrasjon og endring av passord, gå til<br />");
+                    doc.AppendLine("<a href=\"https://no.support.tomtom.com/app/utils/login_form\">no.support.tomtom.com/app/utils/login_form</a></p>");
+
+                    doc.AppendLine("</div>"); // end
+                }
+
+                if (wbe.fsecure)
+                {
+                    doc.AppendLine("<div class=\"fsecure service\">");
+                    doc.AppendLine("<p><h2>F-Secure Internet Security</h2>");
+                    doc.AppendLine("Din sikkerhetsprogramvare F-Secure Internet Security er installert og klargjort.<br /></p>");
+
+                    AddField(doc, "Lisens:", wbe.fsecureKey, true);
+
+                    doc.AppendLine("</div>"); // end
+                }
+
+                if (wbe.pin)
+                {
+                    doc.AppendLine("<div class=\"pin service\">");
+                    doc.AppendLine("<p><h2>Pin</h2>");
+                    doc.AppendLine("En sikkerhets PIN er aktivert på ditt produkt.<br /></p>");
+
+                    AddField(doc, "PIN:", wbe.pinCode, true);
+
+                    doc.AppendLine("</div>"); // end
+                }
+
+                if (wbe.comment)
+                {
+                    doc.AppendLine("<div class=\"kommentar service\">");
+                    doc.AppendLine("<p><h2>Kommentar</h2>");
+                    doc.AppendLine("<p>" + wbe.commentString + "</p>");
+
+                    doc.AppendLine("</div>"); // end
+                }
+
+                if (wbe.GetNumberOfItems() > 6)
+                {
+                    if (Alert("Det kan se ut som informasjonen ikke passer på en side. Vil du fortsette?", "Info", MessageBoxButtons.YesNo, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1) == System.Windows.Forms.DialogResult.No)
+                        return false;
+                }
+
+                doc.AppendLine("<div class=\"footertext\"><span class='Bottom'>" + appConfig.shopName + "<br/>Kundeservice: 815 32 000 &nbsp;&nbsp; Åpningstider: Man - fre: 09:00 - 21:00 (lørdag 10:00 - 15:00)</span></div>");
+                doc.AppendLine("</div>");
+                doc.AppendLine("</body>");
+                doc.AppendLine("</html>");
+
+                content = doc;
+
+                return true;
             }
-
-            if (wbe.apple)
+            catch (Exception ex)
             {
-                height += 237 + 25;
-                doc.Append("<div class=\"apple service\">");
-                doc.Append("<p><h2>Apple-ID</h2>");
-                doc.Append("Vi har opprettet en Apple-ID i forbindelse med klargjøringen av ditt produkt.<br /></p>");
-
-                AddField(doc, "Brukernavn / E-post adresse:", wbe.appleUser, true);
-                AddField(doc, "Passord:", wbe.applePass, true);
-
-                doc.Append("<div id=\"table\">");
-                doc.Append("<div id=\"left\">");
-                doc.Append("Sikkerhetsspørsmål:");
-                doc.Append("</div>");
-                doc.Append("<div id=\"right\"  style=\"font-size:12px;line-height: 135%;\">");
-                doc.Append("Spørsmål 1: " + wbe.appleQuestionOne + "<br />");
-                doc.Append("Svar: <b>" + wbe.appleAnswerOne + "</b><br />");
-                doc.Append("Spørsmål 2: " + wbe.appleQuestionTwo + "<br />");
-                doc.Append("Svar: <b>" + wbe.appleAnswerTwo + "</b><br />");
-                doc.Append("Spørsmål 3: " + wbe.appleQuestionThree + "<br />");
-                doc.Append("Svar: <b>" + wbe.appleAnswerThree + "</b>");
-                doc.Append("</div>");
-                doc.Append("</div>");
-
-                AddField(doc, "Fødselsdato:", wbe.appleDay + " " + wbe.appleMonth + " " + wbe.appleYear, true);
-
-                doc.Append("</div>"); // end
+                var error = new Error("Feil ved genereing av PDF", ex);
+                error.ShowDialog();
             }
-
-            if (wbe.email)
-            {
-                height += 110 + 25;
-                doc.Append("<div class=\"email service\">");
-                doc.Append("<p><h2>E-post konto</h2>");
-                doc.Append("E-post er ferdig oppsatt på ditt produkt.<br /></p>");
-
-                AddField(doc, "Brukernavn / E-post:", wbe.emailUser, true);
-                AddField(doc, "Passord:", wbe.emailPass, true);
-
-                doc.Append("</div>"); // end
-            }
-
-            if (wbe.dropbox)
-            {
-                height += 160 + 25;
-                doc.Append("<div class=\"dropbox service\">");
-                doc.Append("<p><h2>Dropbox Konto</h2>");
-                doc.Append("Din Dropbox er satt opp og aktivert på ditt produkt.<br /></p>");
-
-                AddField(doc, "E-post adresse:", wbe.dropboxUser, true);
-                AddField(doc, "Passord:", wbe.dropboxPass, true);
-                if (wbe.dropboxDay != "Dag")
-                    AddField(doc, "Fødselsdato:", wbe.dropboxDay + " " + wbe.dropboxMonth + " " + wbe.dropboxYear, true);
-
-                doc.Append("</div>"); // end
-            }
-
-            if (wbe.samsung)
-            {
-                height += 110 + 25;
-                doc.Append("<div class=\"samsung service\">");
-                doc.Append("<p><h2>Samsung konto</h2>");
-                doc.Append("Vi har opprettet en Samsung konto i forbindelse med klargjøringen av ditt produkt.</p>");
-
-                AddField(doc, "Brukernavn / E-post:", wbe.samsungUser, true);
-                AddField(doc, "Passord:", wbe.samsungPass, true);
-
-                doc.Append("</div>"); // end
-            }
-
-            if (wbe.pin)
-            {
-                height += 88 + 25;
-                doc.Append("<div class=\"pin service\">");
-                doc.Append("<p><h2>Pin</h2>");
-                doc.Append("En sikkerhets PIN er aktivert på ditt produkt.<br /></p>");
-
-                AddField(doc, "PIN:", wbe.pinCode, true);
-
-                doc.Append("</div>"); // end
-            }
-
-            if (wbe.comment)
-            {
-                height += 88 + 25;
-                doc.Append("<div class=\"kommentar service\">");
-                doc.Append("<p><h2>Kommentar</h2>");
-                doc.Append("<p>" + wbe.commentString + "</p>");
-
-                doc.Append("</div>"); // end
-            }
-
-            int pixelBudget = 1000;
-            if (appConfig.pdfLandscape)
-                pixelBudget = 620;
-            if (appConfig.pdfStyle == 1)
-                pixelBudget = Convert.ToInt32((double)pixelBudget * 0.95);
-            height = pixelBudget - height;
-            
-            if (height > 0)
-                doc.Append("<p><div style=\"height:" + height + "px;\">&nbsp;</div></p>");
-            else
-            {
-                if (Alert("Det kan se ut som informasjonen ikke passer til bare en side. Vil du fortsette?", "Info", MessageBoxButtons.YesNo, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1) == System.Windows.Forms.DialogResult.No)
-                    return false;
-            }
-
-            doc.Append("<p>");
-            doc.Append("&nbsp;<br/>");
-            doc.Append("&nbsp;<br/>");
-            doc.Append("<span class='Bottom'>" + appConfig.shopName + "<br/>Kundeservice: 815 32 000 &nbsp;&nbsp; Åpningstider: Man - fre: 09:00 - 21:00 (lørdag 10:00 - 15:00)</span>");
-            doc.Append("</p>");
-            doc.Append("</div>");
-            doc.Append("</body>");
-            doc.Append("</html>");
-
-            content = doc;
-
-            return true;
+            return false;
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -634,14 +679,6 @@ namespace InfoToPdf
             appConfig.shopName = textBoxSettingsShopName.Text;
         }
 
-
-        public static string GetRandomString()
-        {
-	        string path = Path.GetRandomFileName();
-	        path = path.Replace(".", ""); // Remove period.
-	        return path;
-        }
-
         private void button2_Click(object sender, EventArgs e)
         {
             FillQuick();
@@ -652,8 +689,6 @@ namespace InfoToPdf
             var nameForm = new Quick();
             if (nameForm.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
-
-
                 string _fornavn = nameForm.textBoxFornavn.Text;
                 string _etternavn = nameForm.textBoxEtternavn.Text;
                 string _mobil = nameForm.textBoxMobile.Text;
@@ -669,15 +704,21 @@ namespace InfoToPdf
                 string _password = simplePasswords ? "Elkjop123" : CreatePassword(rnd.Next(9999999));
                 string _email = _fornavn.ToLower().Trim().Replace(" ", ".") + "." + _etternavn.ToLower().Trim().Replace(" ", ".") + "@outlook.com";
 
-                webBrowser.Document.GetElementById("jottacheck").InvokeMember("CLICK");
+                var document = new WebBrowserExtract();
+                document.Extract(webBrowser);
+
+                if (!document.jotta)
+                    webBrowser.Document.GetElementById("jottacheck").InvokeMember("CLICK");
                 webBrowser.Document.GetElementById("jottauser").SetAttribute("value", _mobil);
                 webBrowser.Document.GetElementById("jottapass").SetAttribute("value", _password);
 
-                webBrowser.Document.GetElementById("mcafeecheck").InvokeMember("CLICK");
+                if (!document.mcafee)
+                    webBrowser.Document.GetElementById("mcafeecheck").InvokeMember("CLICK");
                 webBrowser.Document.GetElementById("mcafeeuser").SetAttribute("value", _email);
                 webBrowser.Document.GetElementById("mcafeepass").SetAttribute("value", _password);
 
-                webBrowser.Document.GetElementById("mscheck").InvokeMember("CLICK");
+                if (!document.microsoft)
+                    webBrowser.Document.GetElementById("mscheck").InvokeMember("CLICK");
                 webBrowser.Document.GetElementById("microsoftuser").SetAttribute("value", _email);
                 webBrowser.Document.GetElementById("microsoftpass").SetAttribute("value", _password);
                 webBrowser.Document.GetElementById("ms-day").Children[1].SetAttribute("selected", "selected");
@@ -775,7 +816,6 @@ namespace InfoToPdf
             }
         }
 
-
         private void bwPdfSend_Completed(object sender, RunWorkerCompletedEventArgs e)
         {
             if (e.Error != null)
@@ -845,30 +885,46 @@ namespace InfoToPdf
         {
             try
             {
-                File.Delete(settingsFile);
+                if (Alert("Sikker?", "Tilbakestill alt", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != System.Windows.Forms.DialogResult.Yes)
+                    return;
+
+                int s = 0, d = 0;
+                if (appConfig != null)
+                {
+                    s = appConfig.statsCountStarted;
+                    d = appConfig.statsCountStarted;
+                }
+
+                try
+                {
+                    Directory.Delete(settingsPath, true);
+                }
+                catch
+                {
+                    throw new IOException("En eller flere filer var i bruk under " + settingsPath + " og kunne ikke bli slettet.\n For en fullstendig tilbakestilling av programmet til standard anbefales det å slette mappen manuelt.");
+                }
+
+                StartupCheck();
                 appConfig = new AppSettings();
+                appConfig.statsCountStarted = s;
+                appConfig.statsCountDocuments = d;
                 SaveSettings();
                 FillSettings();
             }
-            catch
+            catch (Exception ex)
             {
-
+                var error = new Error("Noe skjedde ved reset av innstillingene. Lukk alle programmer og prøv igjen.", ex);
+                error.ShowDialog();
             }
-        }
-
-        private void radioButtonSettingsOrientV_CheckedChanged(object sender, EventArgs e)
-        {
-            appConfig.pdfLandscape = radioButtonSettingsOrientH.Checked;
-        }
-
-        private void numericSettingsPdfZoom_ValueChanged(object sender, EventArgs e)
-        {
-            appConfig.pdfZoom = numericSettingsPdfZoom.Value;
         }
 
         private void button1_Click_1(object sender, EventArgs e)
         {
-            Alert("KontoInfo v" + version + "  " + RetrieveLinkerTimestamp().ToShortDateString() + "\nProgrammet er laget av Trond Borgund med inspirasjon fra Tommy W. Major som laget Kontoinfo.htm\n", "Om..", MessageBoxButtons.OK, MessageBoxIcon.None, MessageBoxDefaultButton.Button1);
+            Alert("KontoInfo v" + version + "  " + RetrieveLinkerTimestamp().ToShortDateString()
+                + "\nProgrammet er laget av Trond Borgund med inspirasjon fra Tommy W. Major som laget Kontoinfo.htm\n\n"
+                + "Takk til Brad Barnhill for Barcode Library 11-02-2013\n"
+                + "og folket bak github.com/wkhtmltopdf/wkhtmltopdf!"
+                ,"Om..", MessageBoxButtons.OK, MessageBoxIcon.None, MessageBoxDefaultButton.Button1, true);
         }
 
         private DateTime RetrieveLinkerTimestamp()
@@ -911,6 +967,17 @@ namespace InfoToPdf
         private void checkBoxSettingsWarnMissingBarcode_CheckedChanged(object sender, EventArgs e)
         {
             appConfig.pdfAddBarcode = checkBoxSettingsAddBarcode.Checked;
+        }
+
+        private void panelSettings_VisibleChanged(object sender, EventArgs e)
+        {
+            if (appConfig != null)
+                labelStatsCountDocuments.Text = appConfig.statsCountDocuments.ToString();
+        }
+
+        private void checkBoxSettingsWarnExit_CheckedChanged(object sender, EventArgs e)
+        {
+            appConfig.warnDataLoss = checkBoxSettingsWarnExit.Checked;
         }
     }
 

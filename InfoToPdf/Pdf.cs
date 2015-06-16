@@ -23,40 +23,21 @@ namespace InfoToPdf
         {
             try
             {
-                string sourceFile = MainForm.appTemp + @"\KontoInfoHtml.html";
+                string sourceFile = MainForm.appTemp + "\\KontoInfoHtml.html";
+                string destinationFile = Path.GetTempPath() + GetTempPdfFilename();
 
-                string ordern = "";
-                if (ArgOrderno != null)
-                    if (ArgOrderno.Length > 4)
-                        ordern = ArgOrderno;
-
-                if (ordern.Length == 0 && ArgEmail != null)
-                    if (IsValidEmail(ArgEmail))
-                        ordern = ArgEmail;
-
-                string destinationFile = MainForm.appTemp + @"\KontoInfo " + ordern + ".pdf";
-                if (File.Exists(destinationFile))
-                {
-                    try
-                    {
-                        File.Delete(destinationFile);
-                    }
-                    catch
-                    { }
-                }
                 File.WriteAllText(sourceFile, source.ToString());
 
-                string options = "-B 0 -L 0 -R 0 -T 0 --zoom " + appConfig.pdfZoom + " ";
-                if (appConfig.pdfLandscape)
-                    options += "-O landscape ";
+                string options = "-B 0 -L 0 -R 0 -T 0 ";
 
-                Console.WriteLine("PDF argument: " + options + sourceFile + destinationFile);
+                Console.WriteLine("PDF argument: " + options + "\"" + sourceFile + "\" \"" + destinationFile + "\" ");
 
                 var wkhtmltopdf = new ProcessStartInfo();
                 wkhtmltopdf.WindowStyle = ProcessWindowStyle.Hidden;
                 wkhtmltopdf.FileName = MainForm.filePDFwkhtmltopdf;
-                wkhtmltopdf.Arguments = options + "\"" + sourceFile + "\" \"" + destinationFile + "\"";
+                wkhtmltopdf.Arguments = options + " \"" + sourceFile + "\" \"" + destinationFile + "\"";
                 wkhtmltopdf.WorkingDirectory = MainForm.settingsPath;
+                wkhtmltopdf.RedirectStandardOutput = true;
                 wkhtmltopdf.CreateNoWindow = true;
                 wkhtmltopdf.UseShellExecute = false;
 
@@ -69,13 +50,15 @@ namespace InfoToPdf
 
                 int result = D.ExitCode;
                 if (result != 0)
-                    throw new Exception("wkhtmltopdf feilkode: " + result);
+                    throw new Exception("wkhtmltopdf returncode: " + result + " wkhtmltopdf arg: " + wkhtmltopdf.Arguments);
+
+                Console.WriteLine("wkhtmltopdf returncode: " + result);
 
                 return destinationFile;
             }
             catch (Exception ex)
             {
-                throw new Exception("Ukjent feil oppstod under generering av PDF.", ex);
+                throw new Exception("Feil oppstod under generering av PDF", ex);
             }
         }
 
@@ -90,6 +73,13 @@ namespace InfoToPdf
             {
                 return false;
             }
+        }
+
+        public static string GetTempPdfFilename()
+        {
+            string name = Path.GetRandomFileName();
+            name = Path.ChangeExtension(name, ".pdf");
+            return "infotopdf" + name;
         }
 
 
@@ -125,7 +115,5 @@ namespace InfoToPdf
                 throw;
             }
         }
-
-
     }
 }

@@ -60,16 +60,25 @@ namespace InfoToPdf
         public bool samsung { get; set; }
         public string samsungUser { get; set; }
         public string samsungPass { get; set; }
+        public string samsungDay { get; set; }
+        public string samsungMonth { get; set; }
+        public string samsungYear { get; set; }
+        public bool tomtom { get; set; }
+        public string tomtomUser { get; set; }
+        public string tomtomPass { get; set; }
         public bool pin { get; set; }
         public string pinCode { get; set; }
         public bool comment { get; set; }
         public string commentString { get; set; }
+        private int itemsChecked;
 
         public void Extract(WebBrowser wb)
         {
             try
             {
                 this.web = wb;
+
+                
 
                 HtmlElementCollection colInput = web.Document.GetElementsByTagName("input");
                 foreach (HtmlElement item in colInput)
@@ -142,6 +151,12 @@ namespace InfoToPdf
                         samsungUser = item.GetAttribute("value");
                     else if (item.GetAttribute("id") == "samsungpass")
                         samsungPass = item.GetAttribute("value");
+                    else if (item.GetAttribute("id") == "tomtomcheck")
+                        tomtom = Convert.ToBoolean(item.GetAttribute("checked"));
+                    else if (item.GetAttribute("id") == "tomtomuser")
+                        tomtomUser = item.GetAttribute("value");
+                    else if (item.GetAttribute("id") == "tomtompass")
+                        tomtomPass = item.GetAttribute("value");
                     else if (item.GetAttribute("id") == "pincheck")
                         pin = Convert.ToBoolean(item.GetAttribute("checked"));
                     else if (item.GetAttribute("id") == "pin")
@@ -185,6 +200,12 @@ namespace InfoToPdf
                     dropboxMonth = GetOption("dropbox-month");
                     dropboxYear = GetOption("dropbox-year");
                 }
+                if (samsung)
+                {
+                    samsungDay = GetOption("samsung-day");
+                    samsungMonth = GetOption("samsung-month");
+                    samsungYear = GetOption("samsung-year");
+                }
                 if (comment)
                 {
                     HtmlElementCollection col = web.Document.GetElementsByTagName("textarea");
@@ -203,6 +224,39 @@ namespace InfoToPdf
                 var error = new Error("Feil ved lesing av variabler.", ex);
                 error.ShowDialog();
             }
+        }
+
+        public int GetNumberOfItems()
+        {
+            this.itemsChecked = 0;
+            if (jotta)
+                itemsChecked++;
+            if (mcafee)
+                itemsChecked++;
+            if (fsecure)
+                itemsChecked++;
+            if (microsoft)
+                itemsChecked++;
+            if (office)
+                itemsChecked++;
+            if (gmail)
+                itemsChecked++;
+            if (apple)
+                itemsChecked++;
+            if (email)
+                itemsChecked++;
+            if (dropbox)
+                itemsChecked++;
+            if (samsung)
+                itemsChecked++;
+            if (tomtom)
+                itemsChecked++;
+            if (pin)
+                itemsChecked++;
+            if (comment)
+                itemsChecked++;
+
+            return this.itemsChecked;
         }
 
         private string GetOption(string id)

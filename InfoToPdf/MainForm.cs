@@ -21,7 +21,7 @@ namespace InfoToPdf
 {
     public partial class MainForm : Form
     {
-        public static string version = "0.2";
+        public static string version = "0.3";
         public static string settingsPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\InfoPdf";
         public static string appTemp = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\InfoPdf\Temp";
         public static string settingsFile = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\InfoPdf\Settings.xml";
@@ -29,7 +29,7 @@ namespace InfoToPdf
         public static string filePDFwkhtmltopdf = settingsPath + @"\wkhtmltopdf.exe";
         BackgroundWorker bwPdf = new BackgroundWorker();
         public StringBuilder content = new StringBuilder();
-        public static string fileHtml = appTemp + @"\kontoinfo_temp.html";
+        public static string fileHtml = appTemp + @"\form.html";
         public static string emailCustomer = "";
         public WebBrowserExtract wbe;
         private Notification notify = new Notification();
@@ -277,11 +277,20 @@ namespace InfoToPdf
 
         private void buttonUpdate_Click(object sender, EventArgs e)
         {
-            if (BrowserContainsData() && appConfig.warnDataLoss)
-                if (Alert("Er du sikker på at du vil slette gjeldene data?", "Nytt dokument", MessageBoxButtons.YesNo) != System.Windows.Forms.DialogResult.Yes)
-                    return;
+            if ((ModifierKeys & Keys.Control) == Keys.Control)
+            {
+                ProcessStartInfo start = new ProcessStartInfo();
+                start.FileName = System.Reflection.Assembly.GetEntryAssembly().Location;
+                System.Diagnostics.Process.Start(start);
+            }
+            else
+            {
+                if (BrowserContainsData() && appConfig.warnDataLoss)
+                    if (Alert("Er du sikker på at du vil slette gjeldene data?", "Nytt dokument", MessageBoxButtons.YesNo) != System.Windows.Forms.DialogResult.Yes)
+                        return;
 
-            object y = webBrowser.Document.InvokeScript("resetForm");
+                object y = webBrowser.Document.InvokeScript("resetForm");
+            }
         }
 
         private void buttonExtract_Click(object sender, EventArgs e)

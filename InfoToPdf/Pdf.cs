@@ -23,19 +23,19 @@ namespace InfoToPdf
         {
             try
             {
-                string sourceFile = MainForm.appTemp + "\\KontoInfoHtml.html";
-                string destinationFile = Path.GetTempPath() + GetTempPdfFilename();
+                string sourceFile = @"Temp\" + GetTempFilename(".html");
+                string destinationFile = @"Temp\" + GetTempFilename(".pdf");
 
-                File.WriteAllText(sourceFile, source.ToString());
+                File.WriteAllText(MainForm.settingsPath + @"\" + sourceFile, source.ToString());
 
                 string options = "-B 0 -L 0 -R 0 -T 0 ";
 
-                Console.WriteLine("PDF argument: " + options + "\"" + sourceFile + "\" \"" + destinationFile + "\" ");
+                Console.WriteLine("PDF argument: " + options + " " + sourceFile + " " + destinationFile);
 
                 var wkhtmltopdf = new ProcessStartInfo();
                 wkhtmltopdf.WindowStyle = ProcessWindowStyle.Hidden;
                 wkhtmltopdf.FileName = MainForm.filePDFwkhtmltopdf;
-                wkhtmltopdf.Arguments = options + " \"" + sourceFile + "\" \"" + destinationFile + "\"";
+                wkhtmltopdf.Arguments = options + " " + sourceFile + " " + destinationFile;
                 wkhtmltopdf.WorkingDirectory = MainForm.settingsPath;
                 wkhtmltopdf.RedirectStandardOutput = true;
                 wkhtmltopdf.CreateNoWindow = true;
@@ -54,7 +54,7 @@ namespace InfoToPdf
 
                 Console.WriteLine("wkhtmltopdf returncode: " + result);
 
-                return destinationFile;
+                return MainForm.settingsPath + @"\" + destinationFile;
             }
             catch (Exception ex)
             {
@@ -75,11 +75,11 @@ namespace InfoToPdf
             }
         }
 
-        public static string GetTempPdfFilename()
+        public static string GetTempFilename(string ext)
         {
             string name = Path.GetRandomFileName();
-            name = Path.ChangeExtension(name, ".pdf");
-            return "infotopdf" + name;
+            name = Path.ChangeExtension(name, ext);
+            return "infotopdf_" + name;
         }
 
 

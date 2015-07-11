@@ -30,5 +30,10 @@ namespace InfoToPdf
         {
             this.Close();
         }
+
+        private void buttonQuit_Click(object sender, EventArgs e)
+        {
+            Application.Exit();
+        }
     }
 }

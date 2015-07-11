@@ -10,6 +10,7 @@ namespace InfoToPdf
     {
         public WebBrowser web;
         public string orderno { get; set; }
+        public string kundenavn { get; set; }
         public bool jotta { get; set; }
         public string jottaUser { get; set; }
         public string jottaPass { get; set; }
@@ -66,11 +67,17 @@ namespace InfoToPdf
         public bool tomtom { get; set; }
         public string tomtomUser { get; set; }
         public string tomtomPass { get; set; }
+        public bool other { get; set; }
+        public string otherName { get; set; }
+        public string otherUser { get; set; }
+        public string otherPass { get; set; }
+        public string otherText { get; set; }
         public bool pin { get; set; }
         public string pinCode { get; set; }
         public bool comment { get; set; }
         public string commentString { get; set; }
         private int itemsChecked;
+        public bool overlayPrintedActive = false;
 
         public void Extract(WebBrowser wb)
         {
@@ -78,13 +85,13 @@ namespace InfoToPdf
             {
                 this.web = wb;
 
-                
-
                 HtmlElementCollection colInput = web.Document.GetElementsByTagName("input");
                 foreach (HtmlElement item in colInput)
                 {
                     if (item.GetAttribute("id") == "ordrenr")
                         orderno = item.GetAttribute("value");
+                    else if (item.GetAttribute("id") == "kundenavn")
+                        kundenavn = item.GetAttribute("value");
                     else if (item.GetAttribute("id") == "jottacheck")
                         jotta = Convert.ToBoolean(item.GetAttribute("checked"));
                     else if (item.GetAttribute("id") == "jottauser")
@@ -157,6 +164,16 @@ namespace InfoToPdf
                         tomtomUser = item.GetAttribute("value");
                     else if (item.GetAttribute("id") == "tomtompass")
                         tomtomPass = item.GetAttribute("value");
+                    else if (item.GetAttribute("id") == "othercheck")
+                        other = Convert.ToBoolean(item.GetAttribute("checked"));
+                    else if (item.GetAttribute("id") == "othername")
+                        otherName = item.GetAttribute("value");
+                    else if (item.GetAttribute("id") == "otheruser")
+                        otherUser = item.GetAttribute("value");
+                    else if (item.GetAttribute("id") == "otherpass")
+                        otherPass = item.GetAttribute("value");
+                    else if (item.GetAttribute("id") == "othertext")
+                        otherText = item.GetAttribute("value");
                     else if (item.GetAttribute("id") == "pincheck")
                         pin = Convert.ToBoolean(item.GetAttribute("checked"));
                     else if (item.GetAttribute("id") == "pin")
@@ -164,6 +181,11 @@ namespace InfoToPdf
                     else if (item.GetAttribute("id") == "commentcheck")
                         comment = Convert.ToBoolean(item.GetAttribute("checked"));
                 }
+
+                HtmlElement element = web.Document.GetElementById("overlay_printed");
+                if (element != null)
+                    if (element.Style != null)
+                        overlayPrintedActive = !element.Style.Equals("DISPLAY: none");
 
                 if (jotta)
                 {
@@ -206,18 +228,26 @@ namespace InfoToPdf
                     samsungMonth = GetOption("samsung-month");
                     samsungYear = GetOption("samsung-year");
                 }
+                if (other)
+                {
+                    HtmlElementCollection elements = web.Document.GetElementsByTagName("textarea");
+                    foreach (HtmlElement item in elements)
+                        if (item.GetAttribute("id") == "othertext")
+                            otherText = item.InnerText;
+                    if (otherText == null)
+                        otherText = "";
+                    if (otherName.Equals(""))
+                        otherName = "Annen konto";
+                }
                 if (comment)
                 {
-                    HtmlElementCollection col = web.Document.GetElementsByTagName("textarea");
-                    foreach (HtmlElement item in col)
-                    {
+                    HtmlElementCollection elements = web.Document.GetElementsByTagName("textarea");
+                    foreach (HtmlElement item in elements)
                         if (item.GetAttribute("id") == "commentstring")
                             commentString = item.InnerText;
-                    }
-
+                    if (commentString == null)
+                        commentString = "";
                 }
-
-
             }
             catch (Exception ex)
             {
@@ -278,7 +308,5 @@ namespace InfoToPdf
                 return "";
             }
         }
-
-
     }
 }

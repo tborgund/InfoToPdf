@@ -16,12 +16,13 @@ using System.Xml;
 using System.Xml.Serialization;
 using BarcodeLib;
 using System.Drawing.Imaging;
+using System.Text.RegularExpressions;
 
 namespace InfoToPdf
 {
-    public partial class MainForm : Form
+    public partial class MainForm : Form 
     {
-        public static string version = "0.3";
+        public static string version = "1.0";
         public static string settingsPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\InfoPdf";
         public static string appTemp = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\InfoPdf\Temp";
         public static string settingsFile = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\InfoPdf\Settings.xml";
@@ -40,7 +41,6 @@ namespace InfoToPdf
             StartupCheck();
             LoadSettings();
             LoadPage();
-            webBrowser.Document.MouseDown += new HtmlElementEventHandler(CloseSettings);
             appConfig.statsCountStarted++;
         }
 
@@ -110,6 +110,9 @@ namespace InfoToPdf
             {
                 try
                 {
+                    if (webBrowser.Document != null)
+                        webBrowser.Document.InvokeScript("doShowOverlayPrinted");
+
                     string result = (string)e.Result;
                     buttonConvert.Text = "Åpner PDF..";
                     System.Diagnostics.Process.Start(result);
@@ -331,7 +334,7 @@ namespace InfoToPdf
             wbe.Extract(webBrowser);
 
             if (!wbe.jotta && !wbe.mcafee && !wbe.fsecure && !wbe.microsoft && !wbe.office && !wbe.gmail && !wbe.apple &&
-                !wbe.email && !wbe.dropbox && !wbe.samsung && !wbe.pin && !wbe.comment)
+                !wbe.email && !wbe.dropbox && !wbe.samsung && !wbe.tomtom && !wbe.other && !wbe.pin && !wbe.comment)
             {
                 return false;
             }
@@ -347,7 +350,7 @@ namespace InfoToPdf
                 wbe.Extract(webBrowser);
 
                 if (!wbe.jotta && !wbe.mcafee && !wbe.fsecure && !wbe.microsoft && !wbe.office && !wbe.gmail && !wbe.apple &&
-                    !wbe.email && !wbe.dropbox && !wbe.samsung && !wbe.tomtom && !wbe.pin && !wbe.comment)
+                    !wbe.email && !wbe.dropbox && !wbe.samsung && !wbe.tomtom && !wbe.other && !wbe.pin && !wbe.comment)
                 {
                     Alert("Ingen bokser valgt!", "Mangler valg - Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return false;
@@ -355,7 +358,7 @@ namespace InfoToPdf
 
                 if (wbe.orderno.Length == 0 && appConfig.warnMissingOrderno)
                 {
-                    if (Alert("Ordrenummer er ikke utfylt. Fortsette?", "Mangler valg - Info", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1) == System.Windows.Forms.DialogResult.No)
+                    if (Alert("Ordrenummer er ikke utfylt. Fortsette?", "Mangler valg", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1) == System.Windows.Forms.DialogResult.No)
                         return false;
                 }
 
@@ -393,7 +396,11 @@ namespace InfoToPdf
                 }
                 doc.AppendLine("<h1>Konto informasjon</h1>");
                 doc.AppendLine("<p>");
-                doc.AppendLine("Kjære kunde!<br />");
+                
+                if (wbe.kundenavn.Equals(""))
+                    doc.AppendLine("Kjære kunde!<br />");
+                else
+                    doc.AppendLine("Hei <b>" + wbe.kundenavn + "!</b><br />");
                 doc.AppendLine("Takk for at du har benyttet deg av våre teknikere til å få satt opp ditt produkt. Her har du en oversikt over brukernavn og passord knyttet til dine kontoer.<br />");
                 doc.AppendLine("<b>Ta godt vare på denne informasjonen!</b>");
                 doc.AppendLine("</p>");
@@ -577,6 +584,22 @@ namespace InfoToPdf
                     doc.AppendLine("</div>"); // end
                 }
 
+                if (wbe.other)
+                {
+                    doc.AppendLine("<div class=\"other service\">");
+                    doc.AppendLine("<p><h2>" + wbe.otherName + "</h2>");
+
+                    AddField(doc, "Brukernavn / E-post:", wbe.otherUser, true);
+                    AddField(doc, "Passord:", wbe.otherPass, true);
+
+                    if (!wbe.otherText.Equals("")) {
+                        doc.AppendLine("<p><b>Informasjon:</b><br />");
+                        doc.AppendLine(wbe.otherText + "</p>");
+                    }
+
+                    doc.AppendLine("</div>"); // end
+                }
+
                 if (wbe.fsecure)
                 {
                     doc.AppendLine("<div class=\"fsecure service\">");
@@ -695,56 +718,97 @@ namespace InfoToPdf
 
         private void FillQuick()
         {
-            var nameForm = new Quick();
-            if (nameForm.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            try
             {
-                string _fornavn = nameForm.textBoxFornavn.Text;
-                string _etternavn = nameForm.textBoxEtternavn.Text;
-                string _mobil = nameForm.textBoxMobile.Text;
-                bool simplePasswords = nameForm.checkBox1.Checked;
-
-                if (_fornavn == "" || _mobil == "")
+                var nameForm = new Quick(this);
+                if (nameForm.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                 {
-                    Alert("Mangelfull utfylling.");
-                    return;
+                    string _fornavn = nameForm.textBoxFornavn.Text;
+                    string _etternavn = nameForm.textBoxEtternavn.Text;
+                    string _mobil = nameForm.textBoxMobil.Text;
+                    string _passord = nameForm.textBoxPassord.Text;
+
+                    var document = new WebBrowserExtract();
+                    document.Extract(webBrowser);
+
+                    if (document.overlayPrintedActive)
+                    {
+                        Alert("Dokumentet er ferdig!\nÅpne for redigering eller opprett nytt");
+                        return;
+                    }
+
+                    if (_fornavn.Trim().Length <= 1)
+                    {
+                        Alert("Fornavn er obligatorisk");
+                        return;
+                    }
+
+                    string _email_part1 = _fornavn.ToLower().Trim().Replace(" ", ".");
+                    string _email_part2 = _etternavn.ToLower().Trim().Replace(" ", ".");
+                    string _email = "";
+                    if (_etternavn.Equals(""))
+                        _email = _email_part1 + "@outlook.com";
+                    else
+                        _email = _email_part1 + "." + _email_part2 + "@outlook.com";
+
+                    _email = Regex.Replace(_email, @"[^\w\.@-]", "", RegexOptions.None);
+
+                    if (!IsValidEmail(_email)) {
+                        Alert("Kunne ikke generere en gyldig e-post adresse!\n" + _email + "\nPrøv igjen");
+                        return;
+                    }
+
+                    if (_mobil.Equals(""))
+                        _mobil = _email_part1.Replace(".", "");
+
+                    webBrowser.Document.GetElementById("kundenavn").SetAttribute("value", _fornavn + " " + _etternavn);
+
+                    if (!document.jotta)
+                        webBrowser.Document.GetElementById("jottacheck").InvokeMember("CLICK");
+                    webBrowser.Document.GetElementById("jottauser").SetAttribute("value", _mobil + " \\ " + _email);
+                    webBrowser.Document.GetElementById("jottapass").SetAttribute("value", _passord);
+
+                    if (!document.mcafee)
+                        webBrowser.Document.GetElementById("mcafeecheck").InvokeMember("CLICK");
+                    webBrowser.Document.GetElementById("mcafeeuser").SetAttribute("value", _email);
+                    webBrowser.Document.GetElementById("mcafeepass").SetAttribute("value", _passord);
+
+                    if (!document.microsoft)
+                        webBrowser.Document.GetElementById("mscheck").InvokeMember("CLICK");
+                    webBrowser.Document.GetElementById("microsoftuser").SetAttribute("value", _email);
+                    webBrowser.Document.GetElementById("microsoftpass").SetAttribute("value", _passord);
+                    webBrowser.Document.GetElementById("ms-day").Children[1].SetAttribute("selected", "selected");
+                    webBrowser.Document.GetElementById("ms-month").Children[1].SetAttribute("selected", "selected");
+                    webBrowser.Document.GetElementById("ms-year").Children[35].SetAttribute("selected", "selected");
                 }
-
-                var rnd = new Random();
-                string _password = simplePasswords ? "Elkjop123" : CreatePassword(rnd.Next(9999999));
-                string _email = _fornavn.ToLower().Trim().Replace(" ", ".") + "." + _etternavn.ToLower().Trim().Replace(" ", ".") + "@outlook.com";
-
-                var document = new WebBrowserExtract();
-                document.Extract(webBrowser);
-
-                if (!document.jotta)
-                    webBrowser.Document.GetElementById("jottacheck").InvokeMember("CLICK");
-                webBrowser.Document.GetElementById("jottauser").SetAttribute("value", _mobil);
-                webBrowser.Document.GetElementById("jottapass").SetAttribute("value", _password);
-
-                if (!document.mcafee)
-                    webBrowser.Document.GetElementById("mcafeecheck").InvokeMember("CLICK");
-                webBrowser.Document.GetElementById("mcafeeuser").SetAttribute("value", _email);
-                webBrowser.Document.GetElementById("mcafeepass").SetAttribute("value", _password);
-
-                if (!document.microsoft)
-                    webBrowser.Document.GetElementById("mscheck").InvokeMember("CLICK");
-                webBrowser.Document.GetElementById("microsoftuser").SetAttribute("value", _email);
-                webBrowser.Document.GetElementById("microsoftpass").SetAttribute("value", _password);
-                webBrowser.Document.GetElementById("ms-day").Children[1].SetAttribute("selected", "selected");
-                webBrowser.Document.GetElementById("ms-month").Children[1].SetAttribute("selected", "selected");
-                webBrowser.Document.GetElementById("ms-year").Children[35].SetAttribute("selected", "selected");
+            }
+            catch (Exception ex)
+            {
+                var error = new Error("Kunne ikke fullføre hurtigutfylling", ex);
+                error.ShowDialog();
             }
         }
 
-        public string CreatePassword(int seed = 029347576)
+        static string CleanString(string str)
         {
-            const string valid = "abcdefghijklmnopqrstuvwxyz";
+            try
+            {
+                return Regex.Replace(str, @"[^\w\.@-]", "", RegexOptions.None);
+            }
+            catch
+            {
+                return String.Empty;
+            }
+        }
+
+        public string CreatePassword(int length = 8, string characters = "abcdefghijklmnopqrstuvwxyz")
+        {
             StringBuilder res = new StringBuilder();
-            Random rnd = new Random(seed);
-            int length = 5;
+            Random rnd = new Random();
+            length = length - 3;
             while (0 < length--)
             {
-                res.Append(valid[rnd.Next(valid.Length)]);
+                res.Append(characters[rnd.Next(characters.Length)]);
             }
 
             string password = res.ToString().Substring(0, 1).ToUpper() + res.ToString().Substring(1, res.ToString().Length - 1) + rnd.Next(100, 999);
@@ -840,8 +904,10 @@ namespace InfoToPdf
             {
                 try
                 {
-                    string result = (string)e.Result;
+                    if (webBrowser.Document != null)
+                        webBrowser.Document.InvokeScript("doShowOverlayPrinted");
 
+                    string result = (string)e.Result;
                     var pdf = new Pdf(appConfig);
                     pdf.SendAsEmail(result, emailCustomer);
                     Alert("E-post sendt.\nTil: " + emailCustomer, "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -988,6 +1054,65 @@ namespace InfoToPdf
         {
             appConfig.warnDataLoss = checkBoxSettingsWarnExit.Checked;
         }
-    }
 
+        private void button3_Click(object sender, EventArgs e)
+        {
+            OpenPassGen();
+        }
+
+        public void OpenPassGen()
+        {
+            var form = new PassordGenerator(this);
+            if (form.ShowDialog() == System.Windows.Forms.DialogResult.Yes)
+            {
+                string _pass = form.textBoxPassword.Text;
+
+                if (_pass.Equals(""))
+                {
+                    Alert("Passordet var tomt!");
+                    return;
+                }
+
+                var document = new WebBrowserExtract();
+                document.Extract(webBrowser);
+
+                if (document.overlayPrintedActive)
+                {
+                    Alert("Dokumentet er ferdig!\nÅpne for redigering eller opprett nytt");
+                    return;
+                }
+
+                if (document.jotta && document.jottaPass.Equals(""))
+                    webBrowser.Document.GetElementById("jottapass").SetAttribute("value", _pass);
+
+                if (document.mcafee && document.mcafeePass.Equals(""))
+                    webBrowser.Document.GetElementById("mcafeepass").SetAttribute("value", _pass);
+
+                if (document.microsoft && document.microsoftPass.Equals(""))
+                    webBrowser.Document.GetElementById("microsoftpass").SetAttribute("value", _pass);
+
+                if (document.apple && document.applePass.Equals(""))
+                    webBrowser.Document.GetElementById("applepass").SetAttribute("value", _pass);
+
+                if (document.dropbox && document.dropboxPass.Equals(""))
+                    webBrowser.Document.GetElementById("dropboxpass").SetAttribute("value", _pass);
+
+                if (document.email && document.emailPass.Equals(""))
+                    webBrowser.Document.GetElementById("emailpass").SetAttribute("value", _pass);
+
+                if (document.gmail && document.gmailPass.Equals(""))
+                    webBrowser.Document.GetElementById("gmailpass").SetAttribute("value", _pass);
+
+                if (document.other && document.otherPass.Equals(""))
+                    webBrowser.Document.GetElementById("otherpass").SetAttribute("value", _pass);
+
+                if (document.samsung && document.samsungPass.Equals(""))
+                    webBrowser.Document.GetElementById("samsungpass").SetAttribute("value", _pass);
+
+                if (document.tomtom && document.tomtomPass.Equals(""))
+                    webBrowser.Document.GetElementById("tomtompass").SetAttribute("value", _pass);
+            }
+        }
+
+    }
 }

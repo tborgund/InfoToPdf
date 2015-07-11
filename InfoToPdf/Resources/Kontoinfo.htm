@@ -16,8 +16,36 @@
             height: 100%;
             margin: 0px;
             position: fixed;
-            z-index: 20;
+            z-index: 21;
             display:none;
+        }
+
+        .overlay_printed {
+            top:0; left:0;
+            background:#fff;
+            opacity: 0.7;
+            filter: alpha(opacity=70);
+            width: 100%;
+            height: 100%;
+            margin: 0px;
+            padding-top:125px;
+            padding-left:40%;
+            position: fixed;
+            z-index: 20;
+        }
+
+        .overlay_title {
+            color:#000;
+            font-weight:800;
+            border: solid 1px #CCCCCC;
+	        background-color: #f9f9f9;
+	        padding: 4px;
+	        margin: 4px 4px 0px 4px;
+        }
+
+        .overlay_edit {
+            color:#000;
+            font-weight:800;
         }
 
         p {
@@ -74,7 +102,7 @@
 			border-bottom:1px solid #eee;
 			font-weight:300;
 			margin-top: 0px;
-			padding:10px 0px;
+			padding:7px 0px;
 			padding-left:0;
 		}
 		
@@ -172,8 +200,8 @@
 
 		.info, .print {
 			display: none;
-            padding-top: 10px;
-            padding-bottom: 10px;
+            padding-top: 8px;
+            padding-bottom: 8px;
             border: 1px solid #a7aaad;
             background-color: #fffac1;
 		}
@@ -274,10 +302,12 @@
         <form autocomplete="off" name="myform">
             <div class="header">
                 <span style="float:left;">Konto informasjon</span>
-                <input type="text" style="float:right;" maxlength="15" id="ordrenr" placeholder="ordre-id" autofocus="autofocus">
-                <label style="float:right;margin-right:10px;">Ordre–id: </label>
+                <input type="text" style="float:right;width:200px;" maxlength="30" id="ordrenr" placeholder="ordre-id" autofocus="autofocus">
+                <label style="float:right;margin-right:10px;font-size:12pt;">Ordre–id: </label><br />
+                <input type="text" style="float:right;width:200px;" maxlength="50" id="kundenavn" placeholder="navn" autofocus="autofocus">
+                <label style="float:right;margin-right:10px;font-size:12pt;">Kunde navn: </label>
             </div>
-
+            <br />
             <div style="clear: both;"></div>
 
             [tips]
@@ -1540,6 +1570,36 @@
                     </div>
                 </li>
 
+                <!-- Annet -->
+                <li class="full">
+                    <div id="textbox">
+                        <p class="alignleft"><label><input type="checkbox" id="othercheck" class="checkbox"> Annet</label></p>
+                    </div>
+                    <div style="clear: both;"></div>
+
+                    <div id="other" class="info">
+                        <label class="alignleft leftlabel" for="othername">Navn på konto: </label>
+                        <input class="alignright textbox" type="text" id="othername" placeholder="kontonavn">
+
+                        <div style="clear: both;"></div>
+
+                        <label class="alignleft leftlabel" for="otheruser">Brukernavn: </label>
+                        <input class="alignright textbox" type="text" id="otheruser" placeholder="brukernavn">
+
+                        <div style="clear: both;"></div>
+
+                        <label class="alignleft leftlabel" for="otherpass">Passord: </label>
+                        <input class="alignright textbox" type="text" id="otherpass" placeholder="passord">
+
+                        <div style="clear: both;"></div>
+
+                        <label class="alignleft leftlabel" for="othertext">Ekstra info: </label>
+                        <textarea class="textbox" rows="3" id="othertext" placeholder="Ekstra info"></textarea>
+
+                        <div style="clear: both;"></div>
+                    </div>
+                </li>
+
                 <!-- F-Secure Lisens -->
                 <li class="full">
                     <div id="textbox">
@@ -1590,6 +1650,13 @@
         </form>
 	</div>
     <div class="overlay" id="overlay"></div>
+    <div class="overlay_printed" id="overlay_printed" style="display:none;">
+        <span class='overlay_title'>Dokument ferdig</span>
+        
+        <div style="clear: both;"></div>
+        <br />
+        <a id='closeoverlay' href='#' class='overlay_edit'>Fortsett redigering..</a>
+    </div>
     <script>
         /*! jQuery v1.7.1 jquery.com | jquery.org/license */
         (function (a, b) {
@@ -1720,6 +1787,22 @@
 		    });
 		})();
 
+		(function () {
+		    $('#othercheck').change(function () {
+		        if (this.checked)
+		            $('#other').show('');
+		        else
+		            $('#other').hide('');
+		    });
+		})();
+
+		$(function () {
+		    $("#closeoverlay").click(function (e) {
+		        e.preventDefault();
+		        doHideOverlayPrinted();
+		    });
+		});
+
 		$(":checkbox").attr("autocomplete", "off");
 
 		$(function () {
@@ -1734,11 +1817,22 @@
 		    $('#overlay').hide('');
 		}
 
+		function doShowOverlayPrinted() {
+		    $('#overlay_printed').show('');
+		}
+
+		function doHideOverlayPrinted() {
+		    $('#overlay_printed').hide('');
+		}
+
 		function resetForm() {
 		    document.getElementById("myform").reset(),
+            $('#overlay_printed').hide(''),
+            $('#overlay').hide(''),
             $('#jotta').hide(''),
             $('#mcafee').hide(''),
             $('#gmail').hide(''),
+            $('#apple').hide(''),
             $('#ms').hide(''),
             $('#msoffice').hide(''),
             $('#f-sec').hide(''),
@@ -1746,6 +1840,7 @@
             $('#dropbox').hide(''),
             $('#samsung').hide(''),
             $('#tomtom').hide(''),
+            $('#other').hide(''),
             $('#pin').hide(''),
             $('#comment').hide('');
 		}

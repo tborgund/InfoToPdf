@@ -11,8 +11,10 @@ namespace InfoToPdf
 {
     public partial class Quick : Form
     {
-        public Quick()
+        MainForm main;
+        public Quick(MainForm form)
         {
+            this.main = form;
             InitializeComponent();
         }
 
@@ -26,6 +28,30 @@ namespace InfoToPdf
         {
             if (textBoxEtternavn.Text.Length > 2)
                 textBoxEtternavn.Text = textBoxEtternavn.Text.Substring(0, 1).ToUpper() + textBoxEtternavn.Text.Substring(1, textBoxEtternavn.Text.Length - 1);
+        }
+
+        private void buttonPassordGen_Click(object sender, EventArgs e)
+        {
+            OpenPassGen();
+        }
+
+        public void OpenPassGen()
+        {
+            var form = new PassordGenerator(main, true);
+            if (form.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            {
+                string _pass = form.textBoxPassword.Text;
+
+                if (_pass.Equals(""))
+                    return;
+
+                textBoxPassord.Text = _pass;
+            }
+        }
+
+        private void Quick_Shown(object sender, EventArgs e)
+        {
+            textBoxFornavn.Select();
         }
     }
 }

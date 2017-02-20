@@ -1,71 +1,67 @@
 ﻿using InfoToPdf.Properties;
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Data;
 using System.Diagnostics;
 using System.Drawing;
-using System.Drawing.Printing;
 using System.IO;
-using System.Linq;
-using System.Net;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
-using System.Xml;
 using System.Xml.Serialization;
 using BarcodeLib;
-using System.Drawing.Imaging;
 using System.Text.RegularExpressions;
 
 namespace InfoToPdf
 {
     public partial class MainForm : Form 
     {
-        public static string version = "1.0";
-        public static string settingsPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\InfoPdf";
-        public static string appTemp = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\InfoPdf\Temp";
-        public static string settingsFile = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\InfoPdf\Settings.xml";
         AppSettings appConfig = new AppSettings();
-        public static string filePDFwkhtmltopdf = settingsPath + @"\wkhtmltopdf.exe";
+        AppStrings appStrings = new AppStrings();
         BackgroundWorker bwPdf = new BackgroundWorker();
         public StringBuilder content = new StringBuilder();
-        public static string fileHtml = appTemp + @"\form.html";
+        
         public static string emailCustomer = "";
         public WebBrowserExtract wbe;
         private Notification notify = new Notification();
 
         public MainForm()
         {
-            InitializeComponent();
             StartupCheck();
+            InitializeComponent();
             LoadSettings();
+            LoadStrings();
+            UpdateWindowTitle();
             LoadPage();
             appConfig.statsCountStarted++;
         }
 
         private void LoadPage()
         {
-            File.WriteAllText(fileHtml, Resources.kontoinfo.Replace("[tips]", RandomTips()));
-            Go(fileHtml);
+            if (appConfig.chainSelected.Equals("Lefdal"))
+                File.WriteAllText(Static.FileHtml, Resources.KontoinfoLefdal.Replace("[tips]", RandomTips()));
+            else
+                File.WriteAllText(Static.FileHtml, Resources.kontoinfo.Replace("[tips]", RandomTips()));
+            Go(Static.FileHtml);
+        }
+
+        private void UpdateWindowTitle()
+        {
+            if (appConfig.chainSelected.Equals("Lefdal"))
+                this.Text = "Konto informasjon " + Static.AppVersion + " - " + appStrings.ChainNameLefdal;
+            else
+                this.Text = "Konto informasjon " + Static.AppVersion + " - " + appStrings.ChainNameElkjop;
         }
 
         private string RandomTips()
         {
             try
             {
-                string[] tips = new string[] {
-                "Be kunden om å velge et passord som er minst 8 tegn langt med 1 stor bokstav og minst 1 tall. Max 16 tegn."
-                , "E-post adressen kan også brukes til å logge inn på Elkjøp Cloud."
-                , "Skjema kan fylles ut for hånd også. Bare merk av boksene du trenger og skriv ut."
-                , "Dokumentet har to forskjellige utseender som kan endres under Innstillinger."
-                , "Hvis informasjonen tar mer plass enn èn side, huk av noen av kontoene og skriv de ut seperat etterpå."
-                , "Hvis ordrenummer legges til, lages det en strekkode som kan leses inn i Elguide."
-                , "Hele navnet på butikken kan fylles ut under innstilligene og vil bli satt inn i bunnteksten."
-                };
-
                 Random rnd = new Random();
-                return "<p>" + tips[rnd.Next(0, tips.Length)] + "</p>";
+
+                if (appConfig.chainSelected.Equals("Lefdal"))
+                    return "<p>" + appStrings.StartupTipsLefdal[rnd.Next(0, appStrings.StartupTipsLefdal.Length)] + "</p>";
+
+                return "<p>" + appStrings.StartupTips[rnd.Next(0, appStrings.StartupTips.Length)] + "</p>";
             }
             catch { }
             return "";
@@ -115,7 +111,7 @@ namespace InfoToPdf
 
                     string result = (string)e.Result;
                     buttonConvert.Text = "Åpner PDF..";
-                    System.Diagnostics.Process.Start(result);
+                    Process.Start(result);
                     appConfig.statsCountDocuments++;
                 }
                 catch (FileNotFoundException ex)
@@ -133,11 +129,11 @@ namespace InfoToPdf
         /// </summary>
         public void LoadSettings()
         {
-            if (!File.Exists(settingsFile))
+            if (!File.Exists(Static.AppSettingsFile))
                 return;
 
             XmlSerializer mySerializer = new XmlSerializer(typeof(AppSettings));
-            using (StreamReader myXmlReader = new StreamReader(settingsFile))
+            using (StreamReader myXmlReader = new StreamReader(Static.AppSettingsFile))
             {
                 try
                 {
@@ -147,7 +143,30 @@ namespace InfoToPdf
                 }
                 catch(Exception ex)
                 {
-                    var error = new Error("Kan ikke laste innstillinger", ex);
+                    var error = new Error("Error loading XML " + Static.AppSettingsFile, ex);
+                    error.ShowDialog();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Load strings from String.xml
+        /// </summary>
+        public void LoadStrings()
+        {
+            if (!File.Exists(Static.AppStringsFile))
+                SaveStrings();
+
+            XmlSerializer mySerializer = new XmlSerializer(typeof(AppStrings));
+            using (StreamReader myXmlReader = new StreamReader(Static.AppStringsFile))
+            {
+                try
+                {
+                    appStrings = (AppStrings)mySerializer.Deserialize(myXmlReader);
+                }
+                catch (Exception ex)
+                {
+                    var error = new Error("Error loading XML " + Static.AppStringsFile, ex);
                     error.ShowDialog();
                 }
             }
@@ -174,6 +193,10 @@ namespace InfoToPdf
             // Other settings
             checkBoxSettingsWarnMissingOrderno.Checked = appConfig.warnMissingOrderno;
             checkBoxSettingsWarnExit.Checked = appConfig.warnDataLoss;
+            if (appConfig.chainSelected.Equals("Lefdal"))
+                radioButtonChainLefdal.Checked = true;
+            else
+                radioButtonChainElkjop.Checked = true;
 
             // Stats
             labelStatsCountDocuments.Text = appConfig.statsCountDocuments.ToString();
@@ -185,7 +208,7 @@ namespace InfoToPdf
         public void SaveSettings()
         {
             var serializerObj = new XmlSerializer(typeof(AppSettings));
-            TextWriter writeFileStream = new StreamWriter(settingsFile);
+            TextWriter writeFileStream = new StreamWriter(Static.AppSettingsFile);
             using (writeFileStream)
             {
                 serializerObj.Serialize(writeFileStream, appConfig);
@@ -193,33 +216,39 @@ namespace InfoToPdf
         }
 
         /// <summary>
-        /// Check for missing directories and modules
+        /// Save strings to strings.xml
+        /// </summary>
+        public void SaveStrings()
+        {
+            var serializerObj = new XmlSerializer(typeof(AppStrings));
+            TextWriter writeFileStream = new StreamWriter(Static.AppStringsFile);
+            using (writeFileStream)
+            {
+                serializerObj.Serialize(writeFileStream, appStrings);
+            }
+        }
+
+        /// <summary>
+        /// Check for missing directories and files
         /// </summary>
         public static void StartupCheck()
         {
             try
             {
-                if (!Directory.Exists(settingsPath))
-                {
-                    Directory.CreateDirectory(settingsPath);
-                }
-                if (!Directory.Exists(appTemp))
-                {
-                    Directory.CreateDirectory(appTemp);
-                }
-                if (!File.Exists(filePDFwkhtmltopdf))
-                {
-                    File.WriteAllBytes(filePDFwkhtmltopdf, Resources.wkhtmltopdf);
-                }
-                else if (new System.IO.FileInfo(filePDFwkhtmltopdf).Length != 23063552)
-                {
-                    Console.WriteLine("filePDFwkhtmltopdf har ikke riktig lengde! 23063552");
-                    File.WriteAllBytes(filePDFwkhtmltopdf, Resources.wkhtmltopdf);
-                }
+                if (!Directory.Exists(Static.AppPath))
+                    Directory.CreateDirectory(Static.AppPath);
+
+                if (!Directory.Exists(Static.AppTemp))
+                    Directory.CreateDirectory(Static.AppTemp);
+
+                if (!File.Exists(Static.ProgramWkhtmltopdf))
+                    File.WriteAllBytes(Static.ProgramWkhtmltopdf, Resources.wkhtmltopdf);
+                else if (new FileInfo(Static.ProgramWkhtmltopdf).Length != 23063552)
+                    File.WriteAllBytes(Static.ProgramWkhtmltopdf, Resources.wkhtmltopdf);
             }
             catch (Exception ex)
             {
-                var error = new Error("Feil ved opprettelse av moduler.", ex);
+                var error = new Error("Error while loading modules", ex);
                 error.ShowDialog();
             }
         }
@@ -259,7 +288,7 @@ namespace InfoToPdf
         {
             try
             {
-                System.IO.DirectoryInfo downloadedMessageInfo = new DirectoryInfo(appTemp);
+                DirectoryInfo downloadedMessageInfo = new DirectoryInfo(Static.AppTemp);
 
                 foreach (FileInfo file in downloadedMessageInfo.GetFiles())
                 {
@@ -344,6 +373,12 @@ namespace InfoToPdf
 
         private bool GenerateHtml()
         {
+            string nameOfChain = string.Empty;
+            if (appConfig.chainSelected.Equals("Lefdal"))
+                nameOfChain = appStrings.ChainNameLefdal;
+            else
+                nameOfChain = appStrings.ChainNameElkjop;
+
             try
             {
                 wbe = new WebBrowserExtract();
@@ -358,24 +393,34 @@ namespace InfoToPdf
 
                 if (wbe.orderno.Length == 0 && appConfig.warnMissingOrderno)
                 {
-                    if (Alert("Ordrenummer er ikke utfylt. Fortsette?", "Mangler valg", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1) == System.Windows.Forms.DialogResult.No)
+                    if (Alert("Ordrenummer er ikke utfylt. Fortsette?", "Mangler valg", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1) == DialogResult.No)
                         return false;
                 }
 
                 StringBuilder doc = new StringBuilder();
 
                 if (appConfig.pdfStyle <= 0)
-                    doc.AppendLine(Resources.htmlStart);
+                {
+                    if (appConfig.chainSelected.Equals("Lefdal"))
+                        doc.AppendLine(Resources.htmlStartLefdal);
+                    else
+                        doc.AppendLine(Resources.htmlStart);
+                }
                 else
-                    doc.AppendLine(Resources.htmlStartPlain);
-
+                {
+                    if (appConfig.chainSelected.Equals("Lefdal"))
+                        doc.AppendLine(Resources.htmlStartPlainLefdal);
+                    else
+                        doc.AppendLine(Resources.htmlStartPlain);
+                }
+                    
                 doc.AppendLine("<div id=\"container\">");
                 if (wbe.orderno.Length > 0)
                 {
                     if (wbe.orderno.Length >= 7 && appConfig.pdfAddBarcode)
                     {
                         try {
-                            File.Delete(MainForm.appTemp + @"\barcode.png");
+                            File.Delete(Static.AppTemp + @"\barcode.png");
                         }
                         catch (IOException) { }
                         using (Barcode barcode = new Barcode(wbe.orderno))
@@ -384,9 +429,9 @@ namespace InfoToPdf
                             barcode.Height = 75;
                             barcode.Width = 300;
                             barcode.Encode();
-                            barcode.SaveImage(MainForm.appTemp + @"\barcode.png", SaveTypes.PNG);
+                            barcode.SaveImage(Static.AppTemp + @"\barcode.png", SaveTypes.PNG);
                         }
-                        if (File.Exists(MainForm.appTemp + @"\barcode.png"))
+                        if (File.Exists(Static.AppTemp + @"\barcode.png"))
                             doc.AppendLine("<span style=\"float:right;margin-top: 0px;padding:10px 0px;\"><img src='barcode.png' style='width:190px;height:20px;vertical-align:middle;'> Ordre-id: " + wbe.orderno + "</span>");
                         else
                             doc.AppendLine("<span style=\"float:right;margin-top: 0px;padding:10px 0px;\"> Ordre-id: " + wbe.orderno + "</span>");
@@ -401,24 +446,28 @@ namespace InfoToPdf
                     doc.AppendLine("Kjære kunde!<br />");
                 else
                     doc.AppendLine("Hei <b>" + wbe.kundenavn + "!</b><br />");
-                doc.AppendLine("Takk for at du har benyttet deg av våre teknikere til å få satt opp ditt produkt. Her har du en oversikt over brukernavn og passord knyttet til dine kontoer.<br />");
-                doc.AppendLine("<b>Ta godt vare på denne informasjonen!</b>");
+                doc.AppendLine(appStrings.DocGreetCustomerStart);
+                doc.AppendLine(appStrings.DocGreetCustomerEnd);
                 doc.AppendLine("</p>");
 
                 if (wbe.jotta)
                 {
                     doc.AppendLine("<div class=\"jotta service\">");
-                    doc.AppendLine("<p><h2>Elkjøp Cloud konto</h2>");
+                    doc.AppendLine("<p><h2>" + nameOfChain + " Cloud konto</h2>");
                     if (wbe.jottaUnlimited)
-                        doc.AppendLine("Elkjøp Cloud med ubegrenset lagring er installert og klargjort.</p>");
+                        doc.AppendLine(nameOfChain + " Cloud med ubegrenset lagring er installert og klargjort.</p>");
                     else
-                        doc.AppendLine("Elkjøp Cloud med 15 GB gratis lagring er installert og klargjort.</p>");
+                        doc.AppendLine(nameOfChain + " Cloud med 15 GB gratis lagring er installert og klargjort.</p>");
 
                     AddField(doc, "Brukernavn:", wbe.jottaUser, true);
                     AddField(doc, "Passord:", wbe.jottaPass, true);
 
                     doc.AppendLine("<p>For administrasjon og endring av passord, gå til<br />");
-                    doc.AppendLine("<a href=\"https://sikkerlagring.elkjop.no/login\">sikkerlagring.elkjop.no/login</a></p>");
+
+                    if (appConfig.chainSelected.Equals("Lefdal"))
+                        doc.AppendLine("<a href=\"https://sikkerlagring.lefdal.com/login\">sikkerlagring.lefdal.com/login</a></p>");
+                    else
+                        doc.AppendLine("<a href=\"https://sikkerlagring.elkjop.no/login\">sikkerlagring.elkjop.no/login</a></p>");
 
                     doc.AppendLine("</div>"); // end
                 }
@@ -633,11 +682,18 @@ namespace InfoToPdf
 
                 if (wbe.GetNumberOfItems() > 6)
                 {
-                    if (Alert("Det kan se ut som informasjonen ikke passer på en side. Vil du fortsette?", "Info", MessageBoxButtons.YesNo, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1) == System.Windows.Forms.DialogResult.No)
+                    if (Alert("Det kan se ut som informasjonen ikke passer på en side. Vil du fortsette?", "Info", MessageBoxButtons.YesNo, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1) == DialogResult.No)
                         return false;
                 }
 
-                doc.AppendLine("<div class=\"footertext\"><span class='Bottom'>" + appConfig.shopName + "<br/>Kundeservice: 815 32 000 &nbsp;&nbsp; Åpningstider: Man - fre: 09:00 - 21:00 (lørdag 10:00 - 15:00)</span></div>");
+                doc.AppendLine("<div class=\"footertext\"><span class='Bottom'>" + appConfig.shopName + "<br/>");
+                if (appConfig.chainSelected.Equals("Lefdal"))
+                    doc.AppendLine(appStrings.DocFooterCallcenterLefdal);
+                else
+                    doc.AppendLine(appStrings.DocFooterCallcenterElkjop);
+                doc.AppendLine("<br/>" + appStrings.DocFooterSupportcenter);
+                doc.AppendLine("</span></div>");
+
                 doc.AppendLine("</div>");
                 doc.AppendLine("</body>");
                 doc.AppendLine("</html>");
@@ -972,11 +1028,11 @@ namespace InfoToPdf
 
                 try
                 {
-                    Directory.Delete(settingsPath, true);
+                    Directory.Delete(Static.AppPath, true);
                 }
                 catch
                 {
-                    throw new IOException("En eller flere filer var i bruk under " + settingsPath + " og kunne ikke bli slettet.\n For en fullstendig tilbakestilling av programmet til standard anbefales det å slette mappen manuelt.");
+                    throw new IOException("En eller flere filer var i bruk under " + Static.AppPath + " og kunne ikke bli slettet.\n For en fullstendig tilbakestilling av programmet til standard anbefales det å slette mappen manuelt.");
                 }
 
                 StartupCheck();
@@ -985,6 +1041,9 @@ namespace InfoToPdf
                 appConfig.statsCountDocuments = d;
                 SaveSettings();
                 FillSettings();
+
+                appStrings = new AppStrings();
+                SaveStrings();
             }
             catch (Exception ex)
             {
@@ -995,7 +1054,7 @@ namespace InfoToPdf
 
         private void button1_Click_1(object sender, EventArgs e)
         {
-            Alert("KontoInfo v" + version + "  " + RetrieveLinkerTimestamp().ToShortDateString()
+            Alert("KontoInfo v" + Static.AppVersion + "  " + RetrieveLinkerTimestamp().ToShortDateString()
                 + "\nProgrammet er laget av Trond Borgund med inspirasjon fra Tommy W. Major som laget Kontoinfo.htm\n\n"
                 + "Takk til Brad Barnhill for Barcode Library 11-02-2013\n"
                 + "og folket bak github.com/wkhtmltopdf/wkhtmltopdf!"
@@ -1008,10 +1067,10 @@ namespace InfoToPdf
             const int c_PeHeaderOffset = 60;
             const int c_LinkerTimestampOffset = 8;
             byte[] b = new byte[2048];
-            System.IO.Stream s = null;
+            Stream s = null;
             try
             {
-                s = new System.IO.FileStream(filePath, System.IO.FileMode.Open, System.IO.FileAccess.Read);
+                s = new FileStream(filePath, FileMode.Open, FileAccess.Read);
                 s.Read(b, 0, 2048);
             }
             finally
@@ -1044,6 +1103,26 @@ namespace InfoToPdf
             appConfig.pdfAddBarcode = checkBoxSettingsAddBarcode.Checked;
         }
 
+        private void radioButtonChainElkjop_CheckedChanged(object sender, EventArgs e)
+        {
+            if (radioButtonChainElkjop.Checked)
+                appConfig.chainSelected = "Elkjop";
+            else
+                appConfig.chainSelected = "Lefdal";
+
+            UpdateWindowTitle();
+        }
+
+        private void radioButtonChainLefdal_CheckedChanged(object sender, EventArgs e)
+        {
+            if (radioButtonChainLefdal.Checked)
+                appConfig.chainSelected = "Lefdal";
+            else
+                appConfig.chainSelected = "Elkjop";
+
+            UpdateWindowTitle();
+        }
+
         private void panelSettings_VisibleChanged(object sender, EventArgs e)
         {
             if (appConfig != null)
@@ -1063,7 +1142,7 @@ namespace InfoToPdf
         public void OpenPassGen()
         {
             var form = new PassordGenerator(this);
-            if (form.ShowDialog() == System.Windows.Forms.DialogResult.Yes)
+            if (form.ShowDialog() == DialogResult.Yes)
             {
                 string _pass = form.textBoxPassword.Text;
 
@@ -1114,5 +1193,30 @@ namespace InfoToPdf
             }
         }
 
+        private void linkLabelStringsXml_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                string argument = "/select, \"" + Static.AppStringsFile + "\"";
+                Process.Start("explorer.exe", argument);
+            }
+            catch { }
+        }
+
+        private void pictureElkjop_Click(object sender, EventArgs e)
+        {
+            radioButtonChainElkjop.Checked = true;
+            appConfig.chainSelected = "Elkjop";
+
+            UpdateWindowTitle();
+        }
+
+        private void pictureLefdal_Click(object sender, EventArgs e)
+        {
+            radioButtonChainLefdal.Checked = true;
+            appConfig.chainSelected = "Lefdal";
+
+            UpdateWindowTitle();
+        }
     }
 }

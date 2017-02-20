@@ -14,14 +14,14 @@ namespace InfoToPdf
         public Error(string tittel, Exception ex, string detaljer = "")
         {
             InitializeComponent();
-            this.Text = "KGSA (" + MainForm.version + ") - Kritisk feil";
+            this.Text = "KGSA (" + Static.AppVersion + ") - Kritisk feil";
 
             labelErrorTitle.Text = tittel;
             if (detaljer != "")
                 textBoxErrorMessage.Text = detaljer + Environment.NewLine;
             textBoxErrorMessage.Text += "Unntak beskjed: " + ex.Message;
             textBoxErrorMessage.Text += Environment.NewLine + "Unntak: " + ex.ToString();
-            textBoxErrorMessage.Text += Environment.NewLine + "App versjon: " + MainForm.version;
+            textBoxErrorMessage.Text += Environment.NewLine + "App versjon: " + Static.AppVersion;
             textBoxErrorMessage.Text += Environment.NewLine + "OS versjon: " + Environment.OSVersion.Version.ToString();
             textBoxErrorMessage.Text += Environment.NewLine + "Tid og Dato: " + DateTime.Now.ToShortTimeString() + " " + DateTime.Now.ToShortDateString();
         }

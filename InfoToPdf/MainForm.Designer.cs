@@ -41,6 +41,7 @@
             this.panelSettings = new System.Windows.Forms.Panel();
             this.tabControl1 = new System.Windows.Forms.TabControl();
             this.tabInnstillinger = new System.Windows.Forms.TabPage();
+            this.label6 = new System.Windows.Forms.Label();
             this.checkBoxSettingsWarnExit = new System.Windows.Forms.CheckBox();
             this.checkBoxSettingsAddBarcode = new System.Windows.Forms.CheckBox();
             this.label7 = new System.Windows.Forms.Label();
@@ -61,12 +62,25 @@
             this.buttonSettingsReset = new System.Windows.Forms.Button();
             this.button1 = new System.Windows.Forms.Button();
             this.buttonSettingsClose = new System.Windows.Forms.Button();
+            this.radioButtonChainElkjop = new System.Windows.Forms.RadioButton();
+            this.radioButtonChainLefdal = new System.Windows.Forms.RadioButton();
+            this.linkLabelStringsXml = new System.Windows.Forms.LinkLabel();
+            this.label8 = new System.Windows.Forms.Label();
+            this.label9 = new System.Windows.Forms.Label();
+            this.panelPictureLefdal = new System.Windows.Forms.Panel();
+            this.pictureLefdal = new System.Windows.Forms.PictureBox();
+            this.panelPictureElkjop = new System.Windows.Forms.Panel();
+            this.pictureElkjop = new System.Windows.Forms.PictureBox();
             this.panel1.SuspendLayout();
             this.panel2.SuspendLayout();
             this.panelSettings.SuspendLayout();
             this.tabControl1.SuspendLayout();
             this.tabInnstillinger.SuspendLayout();
             this.panel3.SuspendLayout();
+            this.panelPictureLefdal.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureLefdal)).BeginInit();
+            this.panelPictureElkjop.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.pictureElkjop)).BeginInit();
             this.SuspendLayout();
             // 
             // panel1
@@ -182,7 +196,7 @@
             this.panelSettings.Location = new System.Drawing.Point(80, 29);
             this.panelSettings.Name = "panelSettings";
             this.panelSettings.Padding = new System.Windows.Forms.Padding(10);
-            this.panelSettings.Size = new System.Drawing.Size(648, 390);
+            this.panelSettings.Size = new System.Drawing.Size(660, 540);
             this.panelSettings.TabIndex = 2;
             this.panelSettings.Visible = false;
             this.panelSettings.VisibleChanged += new System.EventHandler(this.panelSettings_VisibleChanged);
@@ -195,11 +209,19 @@
             this.tabControl1.Location = new System.Drawing.Point(10, 10);
             this.tabControl1.Name = "tabControl1";
             this.tabControl1.SelectedIndex = 0;
-            this.tabControl1.Size = new System.Drawing.Size(626, 326);
+            this.tabControl1.Size = new System.Drawing.Size(638, 476);
             this.tabControl1.TabIndex = 0;
             // 
             // tabInnstillinger
             // 
+            this.tabInnstillinger.Controls.Add(this.panelPictureLefdal);
+            this.tabInnstillinger.Controls.Add(this.panelPictureElkjop);
+            this.tabInnstillinger.Controls.Add(this.label9);
+            this.tabInnstillinger.Controls.Add(this.label8);
+            this.tabInnstillinger.Controls.Add(this.linkLabelStringsXml);
+            this.tabInnstillinger.Controls.Add(this.radioButtonChainLefdal);
+            this.tabInnstillinger.Controls.Add(this.radioButtonChainElkjop);
+            this.tabInnstillinger.Controls.Add(this.label6);
             this.tabInnstillinger.Controls.Add(this.checkBoxSettingsWarnExit);
             this.tabInnstillinger.Controls.Add(this.checkBoxSettingsAddBarcode);
             this.tabInnstillinger.Controls.Add(this.label7);
@@ -217,10 +239,20 @@
             this.tabInnstillinger.Location = new System.Drawing.Point(4, 27);
             this.tabInnstillinger.Name = "tabInnstillinger";
             this.tabInnstillinger.Padding = new System.Windows.Forms.Padding(3);
-            this.tabInnstillinger.Size = new System.Drawing.Size(618, 295);
+            this.tabInnstillinger.Size = new System.Drawing.Size(630, 445);
             this.tabInnstillinger.TabIndex = 0;
             this.tabInnstillinger.Text = "Innstillinger";
             this.tabInnstillinger.UseVisualStyleBackColor = true;
+            // 
+            // label6
+            // 
+            this.label6.AutoSize = true;
+            this.label6.Font = new System.Drawing.Font("Microsoft Sans Serif", 11.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label6.Location = new System.Drawing.Point(37, 280);
+            this.label6.Name = "label6";
+            this.label6.Size = new System.Drawing.Size(49, 18);
+            this.label6.TabIndex = 27;
+            this.label6.Text = "Kjede:";
             // 
             // checkBoxSettingsWarnExit
             // 
@@ -372,9 +404,9 @@
             this.panel3.Controls.Add(this.button1);
             this.panel3.Controls.Add(this.buttonSettingsClose);
             this.panel3.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.panel3.Location = new System.Drawing.Point(10, 336);
+            this.panel3.Location = new System.Drawing.Point(10, 486);
             this.panel3.Name = "panel3";
-            this.panel3.Size = new System.Drawing.Size(626, 42);
+            this.panel3.Size = new System.Drawing.Size(638, 42);
             this.panel3.TabIndex = 1;
             // 
             // labelStatsCountDocuments
@@ -420,13 +452,106 @@
             // buttonSettingsClose
             // 
             this.buttonSettingsClose.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.buttonSettingsClose.Location = new System.Drawing.Point(546, 13);
+            this.buttonSettingsClose.Location = new System.Drawing.Point(558, 13);
             this.buttonSettingsClose.Name = "buttonSettingsClose";
             this.buttonSettingsClose.Size = new System.Drawing.Size(76, 26);
             this.buttonSettingsClose.TabIndex = 12;
             this.buttonSettingsClose.Text = "OK";
             this.buttonSettingsClose.UseVisualStyleBackColor = true;
             this.buttonSettingsClose.Click += new System.EventHandler(this.button1_Click);
+            // 
+            // radioButtonChainElkjop
+            // 
+            this.radioButtonChainElkjop.AutoSize = true;
+            this.radioButtonChainElkjop.Location = new System.Drawing.Point(181, 362);
+            this.radioButtonChainElkjop.Name = "radioButtonChainElkjop";
+            this.radioButtonChainElkjop.Size = new System.Drawing.Size(67, 22);
+            this.radioButtonChainElkjop.TabIndex = 33;
+            this.radioButtonChainElkjop.TabStop = true;
+            this.radioButtonChainElkjop.Text = "Elkjøp";
+            this.radioButtonChainElkjop.UseVisualStyleBackColor = true;
+            this.radioButtonChainElkjop.CheckedChanged += new System.EventHandler(this.radioButtonChainElkjop_CheckedChanged);
+            // 
+            // radioButtonChainLefdal
+            // 
+            this.radioButtonChainLefdal.AutoSize = true;
+            this.radioButtonChainLefdal.Location = new System.Drawing.Point(405, 362);
+            this.radioButtonChainLefdal.Name = "radioButtonChainLefdal";
+            this.radioButtonChainLefdal.Size = new System.Drawing.Size(65, 22);
+            this.radioButtonChainLefdal.TabIndex = 34;
+            this.radioButtonChainLefdal.TabStop = true;
+            this.radioButtonChainLefdal.Text = "Lefdal";
+            this.radioButtonChainLefdal.UseVisualStyleBackColor = true;
+            this.radioButtonChainLefdal.CheckedChanged += new System.EventHandler(this.radioButtonChainLefdal_CheckedChanged);
+            // 
+            // linkLabelStringsXml
+            // 
+            this.linkLabelStringsXml.AutoSize = true;
+            this.linkLabelStringsXml.Location = new System.Drawing.Point(177, 400);
+            this.linkLabelStringsXml.Name = "linkLabelStringsXml";
+            this.linkLabelStringsXml.Size = new System.Drawing.Size(81, 18);
+            this.linkLabelStringsXml.TabIndex = 35;
+            this.linkLabelStringsXml.TabStop = true;
+            this.linkLabelStringsXml.Text = "Strings.xml";
+            this.linkLabelStringsXml.Click += new System.EventHandler(this.linkLabelStringsXml_Click);
+            // 
+            // label8
+            // 
+            this.label8.AutoSize = true;
+            this.label8.Font = new System.Drawing.Font("Microsoft Sans Serif", 11.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label8.Location = new System.Drawing.Point(37, 400);
+            this.label8.Name = "label8";
+            this.label8.Size = new System.Drawing.Size(99, 18);
+            this.label8.TabIndex = 36;
+            this.label8.Text = "Rediger tekst:";
+            // 
+            // label9
+            // 
+            this.label9.AutoSize = true;
+            this.label9.Font = new System.Drawing.Font("Microsoft Sans Serif", 11.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label9.Location = new System.Drawing.Point(276, 400);
+            this.label9.Name = "label9";
+            this.label9.Size = new System.Drawing.Size(220, 18);
+            this.label9.TabIndex = 37;
+            this.label9.Text = "Obs! Krever omstart av program";
+            // 
+            // panelPictureLefdal
+            // 
+            this.panelPictureLefdal.Controls.Add(this.pictureLefdal);
+            this.panelPictureLefdal.Location = new System.Drawing.Point(404, 272);
+            this.panelPictureLefdal.Name = "panelPictureLefdal";
+            this.panelPictureLefdal.Size = new System.Drawing.Size(195, 83);
+            this.panelPictureLefdal.TabIndex = 53;
+            // 
+            // pictureLefdal
+            // 
+            this.pictureLefdal.Image = ((System.Drawing.Image)(resources.GetObject("pictureLefdal.Image")));
+            this.pictureLefdal.Location = new System.Drawing.Point(1, 1);
+            this.pictureLefdal.Name = "pictureLefdal";
+            this.pictureLefdal.Padding = new System.Windows.Forms.Padding(1);
+            this.pictureLefdal.Size = new System.Drawing.Size(192, 80);
+            this.pictureLefdal.TabIndex = 47;
+            this.pictureLefdal.TabStop = false;
+            this.pictureLefdal.Click += new System.EventHandler(this.pictureLefdal_Click);
+            // 
+            // panelPictureElkjop
+            // 
+            this.panelPictureElkjop.Controls.Add(this.pictureElkjop);
+            this.panelPictureElkjop.Location = new System.Drawing.Point(180, 272);
+            this.panelPictureElkjop.Name = "panelPictureElkjop";
+            this.panelPictureElkjop.Size = new System.Drawing.Size(195, 83);
+            this.panelPictureElkjop.TabIndex = 52;
+            // 
+            // pictureElkjop
+            // 
+            this.pictureElkjop.Image = ((System.Drawing.Image)(resources.GetObject("pictureElkjop.Image")));
+            this.pictureElkjop.Location = new System.Drawing.Point(1, 1);
+            this.pictureElkjop.Name = "pictureElkjop";
+            this.pictureElkjop.Padding = new System.Windows.Forms.Padding(1);
+            this.pictureElkjop.Size = new System.Drawing.Size(192, 80);
+            this.pictureElkjop.TabIndex = 46;
+            this.pictureElkjop.TabStop = false;
+            this.pictureElkjop.Click += new System.EventHandler(this.pictureElkjop_Click);
             // 
             // MainForm
             // 
@@ -439,7 +564,7 @@
             this.KeyPreview = true;
             this.MinimumSize = new System.Drawing.Size(835, 588);
             this.Name = "MainForm";
-            this.Text = "Konto Informasjon";
+            this.Text = "Konto informasjon";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Form1_FormClosing);
             this.Load += new System.EventHandler(this.Form1_Load);
             this.Shown += new System.EventHandler(this.Form1_Shown);
@@ -451,6 +576,10 @@
             this.tabInnstillinger.PerformLayout();
             this.panel3.ResumeLayout(false);
             this.panel3.PerformLayout();
+            this.panelPictureLefdal.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.pictureLefdal)).EndInit();
+            this.panelPictureElkjop.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.pictureElkjop)).EndInit();
             this.ResumeLayout(false);
 
         }
@@ -489,6 +618,16 @@
         private System.Windows.Forms.Label labelStatsCountDocuments;
         private System.Windows.Forms.Label label5;
         private System.Windows.Forms.Button button3;
+        private System.Windows.Forms.Label label6;
+        private System.Windows.Forms.RadioButton radioButtonChainLefdal;
+        private System.Windows.Forms.RadioButton radioButtonChainElkjop;
+        private System.Windows.Forms.Label label8;
+        private System.Windows.Forms.LinkLabel linkLabelStringsXml;
+        private System.Windows.Forms.Label label9;
+        private System.Windows.Forms.Panel panelPictureLefdal;
+        private System.Windows.Forms.PictureBox pictureLefdal;
+        private System.Windows.Forms.Panel panelPictureElkjop;
+        private System.Windows.Forms.PictureBox pictureElkjop;
     }
 }
 

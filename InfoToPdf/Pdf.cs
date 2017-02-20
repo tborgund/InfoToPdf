@@ -1,12 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Net.Mail;
 using System.Text;
-using System.Windows.Forms;
 
 namespace InfoToPdf
 {
@@ -26,7 +23,7 @@ namespace InfoToPdf
                 string sourceFile = @"Temp\" + GetTempFilename(".html");
                 string destinationFile = @"Temp\" + GetTempFilename(".pdf");
 
-                File.WriteAllText(MainForm.settingsPath + @"\" + sourceFile, source.ToString());
+                File.WriteAllText(Static.AppPath + @"\" + sourceFile, source.ToString());
 
                 string options = "-B 0 -L 0 -R 0 -T 0 ";
 
@@ -34,9 +31,9 @@ namespace InfoToPdf
 
                 var wkhtmltopdf = new ProcessStartInfo();
                 wkhtmltopdf.WindowStyle = ProcessWindowStyle.Hidden;
-                wkhtmltopdf.FileName = MainForm.filePDFwkhtmltopdf;
+                wkhtmltopdf.FileName = Static.ProgramWkhtmltopdf;
                 wkhtmltopdf.Arguments = options + " " + sourceFile + " " + destinationFile;
-                wkhtmltopdf.WorkingDirectory = MainForm.settingsPath;
+                wkhtmltopdf.WorkingDirectory = Static.AppPath;
                 wkhtmltopdf.RedirectStandardOutput = true;
                 wkhtmltopdf.CreateNoWindow = true;
                 wkhtmltopdf.UseShellExecute = false;
@@ -54,7 +51,7 @@ namespace InfoToPdf
 
                 Console.WriteLine("wkhtmltopdf returncode: " + result);
 
-                return MainForm.settingsPath + @"\" + destinationFile;
+                return Static.AppPath + @"\" + destinationFile;
             }
             catch (Exception ex)
             {
@@ -66,7 +63,7 @@ namespace InfoToPdf
         {
             try
             {
-                var addr = new System.Net.Mail.MailAddress(email);
+                var addr = new MailAddress(email);
                 return addr.Address == email;
             }
             catch
@@ -92,14 +89,14 @@ namespace InfoToPdf
                     SmtpClient smtpServer = new SmtpClient(appConfig.emailSmtpHost);
                     mail.From = new MailAddress(appConfig.emailFromAddress);
 
-                    var addr = new System.Net.Mail.MailAddress(email);
+                    var addr = new MailAddress(email);
                     mail.To.Add(addr);
                     mail.Subject = "Konto Informasjon - " + appConfig.shopName;
                     mail.Body = "Hei" + Environment.NewLine + Environment.NewLine + "Vedlagt følger informasjon angående ditt klargjorte produkt." +
                         Environment.NewLine + "Har du spørsmål om klargjøringen eller trenger hjelp, kontakt vårt kundesenter på telefon 815 32 000 eller ta kontakt med butikken." +
                         Environment.NewLine + "E-poster sendt til denne avsenderen vil ikke bli besvart.";
 
-                    System.Net.Mail.Attachment attachment = new System.Net.Mail.Attachment(file);
+                    Attachment attachment = new System.Net.Mail.Attachment(file);
                     mail.Attachments.Add(attachment);
 
                     smtpServer.Port = appConfig.emailSmtpPort;
